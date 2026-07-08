@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS 18 Weather Card</title>
+<style>
+  :root {
+    /* 苹果惯用的平滑缓动曲线 */
+    --transition-curve: cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+    background: #000;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; overflow: hidden; color: #fff;
+  }
+
+  /* 外部设备容器（模拟 iPhone 尺寸比例） */
+  .phone {
+    position: relative;
+    width: 390px; height: 844px;
+    border-radius: 50px;
+    background: #000;
+    box-shadow: 0 0 0 12px #222, 0 30px 60px rgba(0,0,0,0.8);
+    overflow: hidden;
+  }
+
+  /* 动态渐变背景层 - 通过 opacity 实现丝滑切换 */
+  .bg {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0; transition: opacity 1.2s var(--transition-curve);
+    z-index: 1;
+  }
+  .bg.sunny { background: radial-gradient(circle at 50% 20%, #3a2c5a 0%, #0a0a11 80%); }
+  .bg.windy { background: linear-gradient(160deg, #1c282d 0%, #0d1316 100%); }
+  .bg.rainy { background: linear-gradient(180deg, #1a1e24 0%, #080a0d 100%); }
+  .bg.snowy { background: linear-gradient(180deg, #222b3d 0%, #0a0f17 100%); }
+
+  .phone.sunny .bg.sunny { opacity: 1; }
+  .phone.windy .bg.windy { opacity: 1; }
+  .phone.rainy .bg.rainy { opacity: 1; }
+  .phone.snowy .bg.snowy { opacity: 1; }
+
+  /* 毛玻璃主卡片 */
+  .card {
+    position: absolute;
+    top: 24px; left: 24px; right: 24px; bottom: 110px;
+    border-radius: 36px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+    z-index: 10;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  /* 内容区排版 */
+  .content {
+    position: relative; z-index: 20;
+    padding: 36px 32px;
+    flex: 1; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .city { font-size: 28px; font-weight: 600; letter-spacing: 0.5px; }
+  .date { font-size: 15px; opacity: 0.7; margin-top: 4px; font-weight: 500; }
+
+  .center-temp { text-align: left; margin-top: -10px; }
+  .temp { font-size: 96px; font-weight: 200; letter-spacing: -3px; line-height: 1; }
+  .desc { font-size: 22px; font-weight: 600; opacity: 0.9; margin-top: 8px; }
+  .range { font-size: 16px; font-weight: 500; opacity: 0.7; margin-top: 4px; }
+
+  .footer-details {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 16px;
+    display: flex; justify-content: space-between; font-size: 14px; font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .detail-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .detail-val { font-size: 18px; font-weight: 600; }
+  .detail-lbl { opacity: 0.6; }
+
+  /* 特效容器 */
+  .effects { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+
+  /* --- 1. 晴天：太阳光晕与旋转射线 --- */
+  .sun-core {
+    position: absolute; top: 20%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #ffe699 40%, rgba(255,215,0,0) 80%);
+    box-shadow: 0 0 60px 30px rgba(255, 215, 0, 0.2);
+    opacity: 0; transition: opacity 1s var(--transition-curve);
+  }
+  .sun-rays {
+    position: absolute; top: 20%; left: 50%;
+    width: 350px; height: 350px;
+    transform: translate(-50%, -50%);
+    background: repeating-conic-gradient(from 0deg, rgba(255,215,0,0.15) 0deg 10deg, transparent 10deg 20deg);
+    border-radius: 50%;
+    -webkit-mask-image: radial-gradient(circle, transparent 15%, black 16%, black 50%, transparent 51%);
+    mask-image: radial-gradient(circle, transparent 15%, black 16%, black 50%, transparent 51%);
+    animation: spin 30s linear infinite;
+    opacity: 0; transition: opacity 1s var(--transition-curve);
+  }
+  @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+  .phone.sunny .sun-core, .phone.sunny .sun-rays { opacity: 1; }
+
+  /* --- 2. 大风：飘动云朵、风线、摇摆树木 --- */
+  .cloud {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    filter: blur(12px);
+    opacity: 0; transition: opacity 1s;
+  }
+  .cloud::before, .cloud::after { content: ''; position: absolute; background: inherit; border-radius: 50%; }
+  .cloud-1 { width: 160px; height: 50px; top: 15%; animation: floatCloud 18s linear infinite; }
+  .cloud-1::before { width: 80px; height: 80px; top: -35px; left: 20px; }
+  .cloud-1::after { width: 60px; height: 60px; top: -20px; right: 30px; }
+  .cloud-2 { width: 120px; height: 40px; top: 30%; animation: floatCloud 25s linear infinite 5s; }
+  .cloud-2::before { width: 60px; height: 60px; top: -25px; left: 15px; }
+  .cloud-2::after { width: 40px; height: 40px; top: -15px; right: 20px; }
+
+  @keyframes floatCloud {
+    0% { transform: translateX(150%); opacity: 0; }
+    10% { opacity: 0.9; }
+    90% { opacity: 0.9; }
+    100% { transform: translateX(-150%); opacity: 0; }
+  }
+
+  .wind-line {
+    position: absolute; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+    border-radius: 2px; opacity: 0; transition: opacity 1s;
+  }
+  .wl-1 { width: 180px; top: 40%; animation: blowWind 2.5s linear infinite; }
+  .wl-2 { width: 120px; top: 55%; animation: blowWind 3s linear infinite 1s; }
+  .wl-3 { width: 220px; top: 70%; animation: blowWind 2s linear infinite 0.5s; }
+  @keyframes blowWind {
+    0% { transform: translateX(150%); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateX(-150%); opacity: 0; }
+  }
+
+  .tree {
+    position: absolute; bottom: 15%; opacity: 0; transition: opacity 1s;
+    transform-origin: bottom center;
+  }
+  .tree svg { stroke: rgba(255,255,255,0.5); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .tree-anim { animation: sway 2.5s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform: rotate(-8deg); } to { transform: rotate(12deg); } }
+
+  .phone.windy .cloud, .phone.windy .wind-line, .phone.windy .tree { opacity: 1; }
+
+  /* --- 3. 暴雨：雨滴、水洼、闪电 --- */
+  .rain-drop {
+    position: absolute; width: 1.5px; height: 25px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.8));
+    border-radius: 2px; opacity: 0; transition: opacity 1s;
+  }
+  .phone.rainy .rain-drop { opacity: 0.7; }
+  @keyframes fallRain {
+    0% { transform: translateY(-50px) rotate(15deg); }
+    100% { transform: translateY(700px) rotate(15deg); }
+  }
+
+  .puddle {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+    background: radial-gradient(ellipse at bottom, rgba(255,255,255,0.15) 0%, transparent 70%);
+    opacity: 0; transition: opacity 1s;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .phone.rainy .puddle { opacity: 1; }
+
+  .lightning {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(200,220,255,0.8) 100%);
+    opacity: 0; z-index: 15;
+  }
+  .flash { animation: flashAnim 0.4s ease-out; }
+  @keyframes flashAnim {
+    0% { opacity: 0; }
+    5% { opacity: 0.9; }
+    10% { opacity: 0; }
+    15% { opacity: 0.6; }
+    20% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* --- 4. 暴雪：雪花、堆积 --- */
+  .snow-flake {
+    position: absolute; background: #fff; border-radius: 50%;
+    opacity: 0; transition: opacity 1s;
+    box-shadow: 0 0 6px rgba(255,255,255,0.8);
+  }
+  .phone.snowy .snow-flake { opacity: 0.9; }
+  @keyframes fallSnow {
+    0% { transform: translateY(-30px) translateX(0) rotate(0deg); }
+    100% { transform: translateY(750px) translateX(40px) rotate(360deg); }
+  }
+  .snow-pile {
+    position: absolute; bottom: -30px; left: -20%; right: -20%; height: 100px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border-radius: 50% 50% 0 0;
+    opacity: 0; transition: all 1s var(--transition-curve);
+    border-top: 1px solid rgba(255,255,255,0.3);
+  }
+  .phone.snowy .snow-pile { opacity: 1; bottom: 0; }
+
+  /* 底部按钮控制组 */
+  .controls {
+    position: absolute; bottom: 24px; left: 24px; right: 24px; height: 70px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(25px) saturate(180%); -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-radius: 24px; border: 1px solid rgba(255,255,255,0.15);
+    display: flex; justify-content: space-around; align-items: center;
+    z-index: 30; padding: 0 10px;
+  }
+  .btn {
+    width: 54px; height: 54px; border-radius: 18px;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; transition: all 0.3s var(--transition-curve);
+    color: #fff; opacity: 0.4; position: relative;
+  }
+  .btn.active {
+    opacity: 1; background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .btn:hover { opacity: 0.8; transform: translateY(-2px); }
+  .btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 文本过渡微动效 */
+  .fade-update { animation: fadeUp 0.5s var(--transition-curve); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+</style>
+</head>
+<body>
+
+<div class="phone sunny" id="phone">
+  <!-- 背景层 -->
+  <div class="bg sunny" id="bg-sunny"></div>
+  <div class="bg windy" id="bg-windy"></div>
+  <div class="bg rainy" id="bg-rainy"></div>
+  <div class="bg snowy" id="bg-snowy"></div>
+
+  <!-- 主卡片 -->
+  <div class="card">
+    <div class="effects" id="effects">
+      <!-- 晴天 -->
+      <div class="sun-rays"></div>
+      <div class="sun-core"></div>
+
+      <!-- 大风 -->
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+      <div class="wind-line wl-1"></div>
+      <div class="wind-line wl-2"></div>
+      <div class="wind-line wl-3"></div>
+      <!-- 树木 SVG -->
+      <div class="tree tree-anim" style="left: 15%;">
+        <svg width="60" height="80" viewBox="0 0 100 100"><path d="M50 100 L50 30 Q30 40 30 20 Q40 30 50 15 Q60 30 70 20 Q70 40 50 30 L50 5" /></svg>
+      </div>
+      <div class="tree tree-anim" style="left: 75%; transform: scale(0.8);">
+        <svg width="60" height="80" viewBox="0 0 100 100"><path d="M50 100 L50 30 Q30 40 30 20 Q40 30 50 15 Q60 30 70 20 Q70 40 50 30 L50 5" /></svg>
+      </div>
+
+      <!-- 暴雨 -->
+      <div class="puddle"></div>
+      <div class="lightning" id="lightning"></div>
+
+      <!-- 暴雪 -->
+      <div class="snow-pile"></div>
+    </div>
+
+    <!-- 卡片内容 -->
+    <div class="content">
+      <div class="header">
+        <div>
+          <div class="city">Cupertino</div>
+          <div class="date">Thursday, Oct 24</div>
+        </div>
+      </div>
+
+      <div class="center-temp">
+        <div class="temp" id="temp">24°</div>
+        <div class="desc" id="desc">Clear Sky</div>
+        <div class="range" id="range">H:28° L:18°</div>
+      </div>
+
+      <div class="footer-details">
+        <div class="detail-item">
+          <span class="detail-val" id="d-wind">5</span>
+          <span class="detail-lbl">km/h Wind</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-val" id="d-hum">40%</span>
+          <span class="detail-lbl">Humidity</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-val" id="d-feel">23°</span>
+          <span class="detail-lbl">Feels Like</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部控制栏 -->
+  <div class="controls">
+    <div class="btn active" data-type="sunny">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>
+    </div>
+    <div class="btn" data-type="windy">
+      <svg viewBox="0 0 24 24"><path d="M3 8h9a3 3 0 10-3-3M3 16h13a3 3 0 11-3 3M3 12h17a3 3 0 10-3-3"/></svg>
+    </div>
+    <div class="btn" data-type="rainy">
+      <svg viewBox="0 0 24 24"><path d="M19 16.5A4.5 4.5 0 0014.5 12h-1.2A6 6 0 006 9.5 4.5 4.5 0 0010.5 14H15a4.5 4.5 0 004-4.5zM8 18l-1 3m5-3l-1 3m5-3l-1 3"/></svg>
+    </div>
+    <div class="btn" data-type="snowy">
+      <svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1"/></svg>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 数据字典
+  const dataMap = {
+    sunny: { temp: '24°', desc: 'Clear Sky', range: 'H:28° L:18°', wind: '5', hum: '40%', feel: '23°' },
+    windy: { temp: '19°', desc: 'Windy', range: 'H:22° L:15°', wind: '35', hum: '55%', feel: '17°' },
+    rainy: { temp: '16°', desc: 'Heavy Rain', range: 'H:18° L:14°', wind: '20', hum: '85%', feel: '15°' },
+    snowy: { temp: '-3°', desc: 'Blizzard', range: 'H:0° L:-5°', wind: '25', hum: '90%', feel: '-8°' }
+  };
+
+  const phone = document.getElementById('phone');
+  const btns = document.querySelectorAll('.btn');
+  const effects = document.getElementById('effects');
+  const lightning = document.getElementById('lightning');
+
+  const elTemp = document.getElementById('temp');
+  const elDesc = document.getElementById('desc');
+  const elRange = document.getElementById('range');
+  const elWind = document.getElementById('d-wind');
+  const elHum = document.getElementById('d-hum');
+  const elFeel = document.getElementById('d-feel');
+
+  let intervals = [];
+  let timeouts = [];
+
+  // 清理上一次天气的 DOM 与定时器
+  function clearAllEffects() {
+    intervals.forEach(clearInterval);
+    timeouts.forEach(clearTimeout);
+    intervals = [];
+    timeouts = [];
+    document.querySelectorAll('.rain-drop, .snow-flake').forEach(el => el.remove());
+  }
+
+  // 生成暴雨
+  function createRain() {
+    for(let i=0; i<45; i++) {
+      const drop = document.createElement('div');
+      drop.classList.add('rain-drop');
+      drop.style.left = Math.random() * 100 + '%';
+      const duration = 0.4 + Math.random() * 0.4;
+      const delay = Math.random() * 2;
+      drop.style.animation = `fallRain ${duration}s linear ${delay}s infinite`;
+      effects.appendChild(drop);
+    }
+    // 随机自然闪电逻辑
+    function strike() {
+      lightning.classList.remove('flash');
+      void lightning.offsetWidth; // 触发重绘
+      lightning.classList.add('flash');
+      const nextStrike = 3000 + Math.random() * 6000;
+      timeouts.push(setTimeout(strike, nextStrike));
+    }
+    timeouts.push(setTimeout(strike, 1500));
+  }
+
+  // 生成暴雪（带模糊散景景深）
+  function createSnow() {
+    for(let i=0; i<60; i++) {
+      const flake = document.createElement('div');
+      flake.classList.add('snow-flake');
+      const size = 2 + Math.random() * 5;
+      flake.style.width = size + 'px';
+      flake.style.height = size + 'px';
+      flake.style.left = Math.random() * 100 + '%';
+      flake.style.filter = `blur(${Math.random() * 2}px)`;
+      const duration = 3 + Math.random() * 4;
+      const delay = Math.random() * 5;
+      flake.style.animation = `fallSnow ${duration}s linear ${delay}s infinite`;
+      effects.appendChild(flake);
+    }
+  }
+
+  // 数据切换微动效
+  function updateText(type) {
+    const d = dataMap[type];
+    const els = [elTemp, elDesc, elRange, elWind, elHum, elFeel];
+    els.forEach(el => {
+      el.classList.remove('fade-update');
+      void el.offsetWidth;
+      el.classList.add('fade-update');
+    });
+    elTemp.textContent = d.temp;
+    elDesc.textContent = d.desc;
+    elRange.textContent = d.range;
+    elWind.textContent = d.wind;
+    elHum.textContent = d.hum;
+    elFeel.textContent = d.feel;
+  }
+
+  // 核心控制器
+  function setWeather(type) {
+    phone.className = `phone ${type}`; // 触发背景与环境过渡
+    btns.forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    updateText(type);
+
+    clearAllEffects();
+    if(type === 'rainy') createRain();
+    if(type === 'snowy') createSnow();
+  }
+
+  // 事件绑定
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => setWeather(btn.dataset.type));
+  });
+
+  // 初始化
+  setWeather('sunny');
+</script>
+</body>
+</html>

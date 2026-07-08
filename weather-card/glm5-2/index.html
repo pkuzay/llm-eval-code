@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather · iOS 18</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;800&family=Sora:wght@200;300;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-base: #07070d;
+  --card-bg: rgba(22, 22, 32, 0.55);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.62);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+
+  --sunny-1: #FFC93C;
+  --sunny-2: #FF6E2C;
+  --sunny-glow: rgba(255, 178, 39, 0.5);
+
+  --windy-1: #5EEAD4;
+  --windy-2: #0D9488;
+  --windy-glow: rgba(94, 234, 212, 0.4);
+
+  --rainy-1: #94A3B8;
+  --rainy-2: #1E293B;
+  --rainy-glow: rgba(148, 163, 184, 0.35);
+  --lightning: #FCD34D;
+
+  --snowy-1: #E0F2FE;
+  --snowy-2: #7DD3FC;
+  --snowy-glow: rgba(186, 230, 253, 0.45);
+
+  --current-1: var(--sunny-1);
+  --current-2: var(--sunny-2);
+  --current-glow: var(--sunny-glow);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-base);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 全局背景光斑 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background:
+    radial-gradient(60vw 50vw at 18% 22%, var(--current-2), transparent 60%),
+    radial-gradient(50vw 40vw at 82% 78%, var(--current-1), transparent 60%),
+    radial-gradient(40vw 40vw at 50% 50%, var(--current-glow), transparent 70%);
+  opacity: 0.22;
+  filter: blur(60px);
+  transition: opacity 0.8s ease, background 1.2s ease;
+  z-index: 0;
+  animation: bgDrift 20s ease-in-out infinite;
+}
+
+@keyframes bgDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -2%); }
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.55) 100%);
+  z-index: 1;
+}
+
+.weather-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 36px;
+  background: var(--card-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  z-index: 10;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  animation: cardEnter 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(40px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(155deg, var(--current-2) 0%, transparent 45%, var(--current-1) 110%);
+  opacity: 0.32;
+  transition: background 1s ease, opacity 1s ease;
+  z-index: 0;
+  mix-blend-mode: screen;
+}
+
+.card-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 55%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+}
+
+/* 场景容器 */
+.scene {
+  position: relative;
+  height: 280px;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.weather-scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  pointer-events: none;
+}
+
+.weather-scene.active { opacity: 1; }
+
+/* ============ 晴天 ============ */
+.sun-wrap {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 130px;
+}
+
+.sun {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FFF1A8 0%, #FFC93C 35%, #FF6E2C 100%);
+  box-shadow:
+    0 0 50px rgba(255, 201, 60, 0.7),
+    0 0 100px rgba(255, 110, 44, 0.45),
+    0 0 0 1px rgba(255, 220, 100, 0.3) inset;
+  animation: sunPulse 4.5s ease-in-out infinite;
+}
+
+@keyframes sunPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.12); }
+}
+
+.sun-rays {
+  position: absolute;
+  inset: -45px;
+  animation: rayRotate 30s linear infinite;
+}
+
+.sun-rays::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg, rgba(255, 220, 100, 0.35) 4deg, transparent 8deg,
+    transparent 42deg, rgba(255, 220, 100, 0.35) 46deg, transparent 50deg,
+    transparent 84deg, rgba(255, 220, 100, 0.35) 88deg, transparent 92deg,
+    transparent 126deg, rgba(255, 220, 100, 0.35) 130deg, transparent 134deg,
+    transparent 168deg, rgba(255, 220, 100, 0.35) 172deg, transparent 176deg,
+    transparent 210deg, rgba(255, 220, 100, 0.35) 214deg, transparent 218deg,
+    transparent 252deg, rgba(255, 220, 100, 0.35) 256deg, transparent 260deg,
+    transparent 294deg, rgba(255, 220, 100, 0.35) 298deg, transparent 302deg,
+    transparent 336deg, rgba(255, 220, 100, 0.35) 340deg, transparent 344deg,
+    transparent 360deg
+  );
+  border-radius: 50%;
+  filter: blur(1.5px);
+}
+
+@keyframes rayRotate {
+  to { transform: rotate(360deg); }
+}
+
+.sun-halo {
+  position: absolute;
+  inset: -35px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 201, 60, 0.35) 0%, transparent 65%);
+  animation: haloPulse 3.5s ease-in-out infinite;
+}
+
+@keyframes haloPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.25); opacity: 0.3; }
+}
+
+.heat-shimmer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, transparent, rgba(255, 178, 39, 0.12));
+  filter: blur(8px);
+}
+
+/* ============ 大风 ============ */
+.cloud {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(220,235,235,0.5) 100%);
+  border-radius: 100px;
+  filter: blur(1px);
+  box-shadow: 0 6px 20px rgba(94, 234, 212, 0.15);
+}
+
+.cloud::before, .cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+.cloud-1 {
+  top: 60px;
+  width: 110px;
+  height: 32px;
+  animation: cloudFloat 7s linear infinite;
+}
+.cloud-1::before { width: 50px; height: 50px; top: -25px; left: 18px; }
+.cloud-1::after { width: 38px; height: 38px; top: -18px; right: 22px; }
+
+.cloud-2 {
+  top: 110px;
+  width: 150px;
+  height: 38px;
+  animation: cloudFloat 11s linear infinite;
+  animation-delay: -4s;
+  opacity: 0.85;
+}
+.cloud-2::before { width: 60px; height: 60px; top: -30px; left: 25px; }
+.cloud-2::after { width: 45px; height: 45px; top: -22px; right: 28px; }
+
+.cloud-3 {
+  top: 30px;
+  width: 80px;
+  height: 24px;
+  animation: cloudFloat 9s linear infinite;
+  animation-delay: -6s;
+  opacity: 0.7;
+}
+.cloud-3::before { width: 36px; height: 36px; top: -18px; left: 14px; }
+.cloud-3::after { width: 28px; height: 28px; top: -14px; right: 16px; }
+
+@keyframes cloudFloat {
+  from { transform: translateX(-180px); }
+  to { transform: translateX(450px); }
+}
+
+.tree {
+  position: absolute;
+  bottom: 18px;
+  transform-origin: bottom center;
+}
+
+.tree-1 {
+  left: 28px;
+  animation: treeSway 2.2s ease-in-out infinite;
+}
+
+.tree-2 {
+  right: 28px;
+  animation: treeSway 2.5s ease-in-out infinite;
+  animation-delay: -0.6s;
+  transform: scale(0.85);
+}
+
+@keyframes treeSway {
+  0%, 100% { transform: rotate(-4deg) scaleY(1); }
+  50% { transform: rotate(4deg) scaleY(0.98); }
+}
+
+.wind-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wind-line {
+  position: absolute;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+  border-radius: 2px;
+  animation: windFlow 2s linear infinite;
+}
+
+@keyframes windFlow {
+  0% { transform: translateX(-120px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(450px); opacity: 0; }
+}
+
+/* ============ 暴雨 ============ */
+.rain-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.raindrop {
+  position: absolute;
+  width: 1.5px;
+  background: linear-gradient(180deg, transparent, rgba(180, 220, 255, 0.95));
+  animation: rainFall linear infinite;
+  border-radius: 2px;
+}
+
+@keyframes rainFall {
+  from { transform: translateY(-100px) translateX(0); }
+  to { transform: translateY(320px) translateX(-25px); }
+}
+
+.puddle {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 78%;
+  height: 6px;
+  background: linear-gradient(180deg, rgba(150, 200, 255, 0.5), transparent);
+  border-radius: 50%;
+  filter: blur(3px);
+}
+
+.ripple {
+  position: absolute;
+  bottom: 8px;
+  border: 1.5px solid rgba(200, 230, 255, 0.7);
+  border-radius: 50%;
+  animation: rippleExpand 1.8s ease-out infinite;
+}
+
+@keyframes rippleExpand {
+  0% { width: 0; height: 0; opacity: 0.9; }
+  100% { width: 36px; height: 10px; opacity: 0; }
+}
+
+.lightning-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 240, 0);
+  pointer-events: none;
+  animation: lightningFlash 7s infinite;
+}
+
+@keyframes lightningFlash {
+  0%, 92%, 100% { background: rgba(255, 255, 240, 0); }
+  93% { background: rgba(255, 255, 240, 0.75); }
+  94% { background: rgba(255, 255, 240, 0); }
+  95% { background: rgba(255, 255, 240, 0.5); }
+  96% { background: rgba(255, 255, 240, 0); }
+}
+
+.lightning-bolt {
+  position: absolute;
+  top: 20px;
+  left: 55%;
+  width: 36px;
+  height: 90px;
+  opacity: 0;
+  animation: boltShow 7s infinite;
+  filter: drop-shadow(0 0 12px #FCD34D) drop-shadow(0 0 24px #FCD34D);
+}
+
+@keyframes boltShow {
+  0%, 92%, 100% { opacity: 0; transform: translateX(0) scale(1); }
+  93%, 94% { opacity: 1; transform: translateX(-2px) scale(1.05); }
+  95%, 96% { opacity: 0.9; }
+  97% { opacity: 0; }
+}
+
+.rain-cloud {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(100, 110, 130, 0.9) 0%, rgba(60, 70, 90, 0.7) 100%);
+  border-radius: 100px;
+  filter: blur(2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.rain-cloud::before, .rain-cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+.rain-cloud::before { width: 70px; height: 70px; top: -35px; left: 25px; }
+.rain-cloud::after { width: 55px; height: 55px; top: -28px; right: 30px; }
+
+/* ============ 暴雪 ============ */
+.snow-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.snowflake {
+  position: absolute;
+  color: white;
+  user-select: none;
+  animation: snowFall linear infinite;
+  text-shadow: 0 0 4px rgba(255,255,255,0.6);
+}
+
+@keyframes snowFall {
+  from {
+    transform: translateY(-50px) translateX(0) rotate(0deg);
+  }
+  to {
+    transform: translateY(320px) translateX(var(--drift, 30px)) rotate(360deg);
+  }
+}
+
+.snow-pile {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  z-index: 2;
+}
+
+.snow-pile svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 -2px 8px rgba(186, 230, 253, 0.4));
+}
+
+.frost-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top, rgba(224, 242, 254, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(186, 230, 253, 0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ============ 信息区 ============ */
+.info-section {
+  position: relative;
+  padding: 22px 26px 18px;
+  z-index: 5;
+}
+
+.location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.location {
+  font-family: 'Sora', sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.location-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.location-pin svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.7;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.7);
+  padding: 4px 9px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px;
+  backdrop-filter: blur(10px);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background: #5EEAD4;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #5EEAD4;
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.temp-display {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.temp {
+  font-family: 'Sora', sans-serif;
+  font-size: 92px;
+  font-weight: 200;
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.65) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: filter 0.4s ease;
+}
+
+.temp-unit {
+  font-family: 'Sora', sans-serif;
+  font-size: 30px;
+  font-weight: 300;
+  margin-top: 10px;
+  margin-left: 2px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.condition {
+  font-size: 17px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin-top: -6px;
+  letter-spacing: -0.01em;
+}
+
+.condition-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* 详细数据 */
+.details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 18px;
+  padding: 14px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 4px;
+  position: relative;
+}
+
+.detail-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.detail-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.detail-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: 'Sora', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* 按钮组 */
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.weather-btn {
+  position: relative;
+  padding: 11px 6px 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: var(--text-secondary);
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  letter-spacing: 0.02em;
+}
+
+.weather-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--btn-c1, transparent), var(--btn-c2, transparent));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.weather-btn > * { position: relative; z-index: 1; }
+
+.weather-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.weather-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.weather-btn.active {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 20px var(--current-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+
+.weather-btn.active::before {
+  opacity: 1;
+}
+
+.weather-btn[data-weather="sunny"] { --btn-c1: #FFC93C; --btn-c2: #FF6E2C; }
+.weather-btn[data-weather="windy"] { --btn-c1: #5EEAD4; --btn-c2: #0D9488; }
+.weather-btn[data-weather="rainy"] { --btn-c1: #94A3B8; --btn-c2: #334155; }
+.weather-btn[data-weather="snowy"] { --btn-c1: #E0F2FE; --btn-c2: #7DD3FC; }
+
+.weather-btn.active[data-weather="snowy"] { color: #0c4a6e; }
+
+.btn-icon {
+  display: block;
+  margin: 0 auto 4px;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.4s ease;
+}
+
+.weather-btn:hover .btn-icon { transform: scale(1.15) rotate(-5deg); }
+.weather-btn.active .btn-icon { transform: scale(1.1); }
+
+/* 卡片底部 */
+.card-footer {
+  padding: 10px 26px 22px;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  text-align: center;
+  letter-spacing: 0.05em;
+  position: relative;
+  z-index: 5;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.card-footer span {
+  color: rgba(255,255,255,0.6);
+}
+
+/* 状态特定颜色 */
+[data-weather="sunny"] {
+  --current-1: var(--sunny-1);
+  --current-2: var(--sunny-2);
+  --current-glow: var(--sunny-glow);
+}
+[data-weather="windy"] {
+  --current-1: var(--windy-1);
+  --current-2: var(--windy-2);
+  --current-glow: var(--windy-glow);
+}
+[data-weather="rainy"] {
+  --current-1: var(--rainy-1);
+  --current-2: var(--rainy-2);
+  --current-glow: var(--rainy-glow);
+}
+[data-weather="snowy"] {
+  --current-1: var(--snowy-1);
+  --current-2: var(--snowy-2);
+  --current-glow: var(--snowy-glow);
+}
+
+@media (max-width: 380px) {
+  .temp { font-size: 80px; }
+  .scene { height: 250px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<main class="weather-card" id="weatherCard" data-weather="sunny" role="main" aria-label="天气卡片">
+  <div class="card-gradient"></div>
+  <div class="card-highlight"></div>
+  <div class="card-noise"></div>
+
+  <!-- 场景区 -->
+  <section class="scene" aria-hidden="true">
+    <!-- 晴天 -->
+    <div class="weather-scene active" data-scene="sunny">
+      <div class="sun-wrap">
+        <div class="sun-halo"></div>
+        <div class="sun-rays"></div>
+        <div class="sun"></div>
+      </div>
+      <div class="heat-shimmer"></div>
+    </div>
+
+    <!-- 大风 -->
+    <div class="weather-scene" data-scene="windy">
+      <div class="wind-lines" id="windLines"></div>
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+      <div class="cloud cloud-3"></div>
+      <svg class="tree tree-1" width="64" height="110" viewBox="0 0 64 110">
+        <rect x="28" y="68" width="8" height="42" fill="#2D1810" rx="2"/>
+        <ellipse cx="32" cy="48" rx="30" ry="38" fill="#15803D"/>
+        <ellipse cx="20" cy="36" rx="20" ry="24" fill="#16A34A"/>
+        <ellipse cx="44" cy="42" rx="22" ry="27" fill="#22C55E"/>
+        <ellipse cx="32" cy="28" rx="16" ry="18" fill="#4ADE80" opacity="0.8"/>
+      </svg>
+      <svg class="tree tree-2" width="54" height="92" viewBox="0 0 54 92">
+        <rect x="24" y="58" width="7" height="34" fill="#2D1810" rx="2"/>
+        <ellipse cx="27" cy="40" rx="25" ry="30" fill="#15803D"/>
+        <ellipse cx="17" cy="30" rx="16" ry="20" fill="#16A34A"/>
+        <ellipse cx="37" cy="34" rx="18" ry="22" fill="#22C55E"/>
+      </svg>
+    </div>
+
+    <!-- 暴雨 -->
+    <div class="weather-scene" data-scene="rainy">
+      <div class="lightning-flash"></div>
+      <div class="rain-cloud"></div>
+      <svg class="lightning-bolt" viewBox="0 0 36 90">
+        <path d="M 20 0 L 6 50 L 16 50 L 10 90 L 30 38 L 20 38 L 26 0 Z"
+              fill="#FCD34D"
+              stroke="#FEF3C7"
+              stroke-width="1.2"
+              stroke-linejoin="round"/>
+      </svg>
+      <div class="rain-container" id="rainContainer"></div>
+      <div class="puddle"></div>
+    </div>
+
+    <!-- 暴雪 -->
+    <div class="weather-scene" data-scene="snowy">
+      <div class="frost-overlay"></div>
+      <div class="snow-container" id="snowContainer"></div>
+      <div class="snow-pile">
+        <svg viewBox="0 0 400 50" preserveAspectRatio="none">
+          <path d="M0,50 L0,28 Q40,12 80,20 Q120,8 160,18 Q200,5 240,15 Q280,8 320,20 Q360,12 400,22 L400,50 Z"
+                fill="rgba(255,255,255,0.85)"/>
+          <path d="M0,50 L0,38 Q50,28 100,33 Q150,25 200,32 Q250,26 300,34 Q350,28 400,35 L400,50 Z"
+                fill="rgba(255,255,255,0.6)"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 信息区 -->
+  <section class="info-section">
+    <div class="location-row">
+      <div class="location">
+        <span class="location-pin">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+          Cupertino
+        </span>
+      </div>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        LIVE
+      </div>
+    </div>
+
+    <div class="temp-display">
+      <span class="temp" id="tempValue">26</span>
+      <span class="temp-unit">°</span>
+    </div>
+
+    <div class="condition" id="conditionText">晴朗</div>
+    <div class="condition-sub" id="conditionSub">万里无云 · 最高 28° 最低 18°</div>
+
+    <div class="details">
+      <div class="detail-item">
+        <span class="detail-label">湿度</span>
+        <span class="detail-value" id="humidityVal">42%</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">风速</span>
+        <span class="detail-value" id="windVal">5 km/h</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">紫外线</span>
+        <span class="detail-value" id="uvVal">7</span>
+      </div>
+    </div>
+
+    <div class="buttons" role="tablist">
+      <button class="weather-btn active" data-weather="sunny" aria-label="切换到晴天">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="4.5" fill="currentColor"/>
+          <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="12" y1="2" x2="12" y2="4"/>
+            <line x1="12" y1="20" x2="12" y2="22"/>
+            <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/>
+            <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/>
+            <line x1="2" y1="12" x2="4" y2="12"/>
+            <line x1="20" y1="12" x2="22" y2="12"/>
+            <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/>
+            <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
+          </g>
+        </svg>
+        晴天
+      </button>
+      <button class="weather-btn" data-weather="windy" aria-label="切换到大风">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 8h11a3 3 0 1 0-3-3"/>
+          <path d="M3 12h17a3 3 0 1 1-3 3"/>
+          <path d="M3 16h9"/>
+        </svg>
+        大风
+      </button>
+      <button class="weather-btn" data-weather="rainy" aria-label="切换到暴雨">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 9.5a4.5 4.5 0 0 0-9 0H7a3 3 0 0 0 0 6h11a3 3 0 0 0 1-5.5z" fill="currentColor" fill-opacity="0.25"/>
+          <line x1="8" y1="19" x2="8" y2="21"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="16" y1="19" x2="16" y2="21"/>
+        </svg>
+        暴雨
+      </button>
+      <button class="weather-btn" data-weather="snowy" aria-label="切换到暴雪">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="12" y1="2" x2="12" y2="22"/>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <line x1="4.93" y1="19.07" x2="19.07" y2="4.93"/>
+          <circle cx="12" cy="12" r="2" fill="currentColor"/>
+        </svg>
+        暴雪
+      </button>
+    </div>
+  </section>
+
+  <footer class="card-footer">
+    Weather · 更新于 <span>刚刚</span>
+  </footer>
+</main>
+
+<script>
+// 天气数据
+const weatherData = {
+  sunny: {
+    temp: 26, condition: '晴朗', sub: '万里无云 · 最高 28° 最低 18°',
+    humidity: '42%', wind: '5 km/h', uv: '7'
+  },
+  windy: {
+    temp: 19, condition: '大风', sub: '强阵风 · 最高 22° 最低 14°',
+    humidity: '58%', wind: '38 km/h', uv: '4'
+  },
+  rainy: {
+    temp: 15, condition: '暴雨', sub: '雷电交加 · 最高 17° 最低 12°',
+    humidity: '92%', wind: '22 km/h', uv: '1'
+  },
+  snowy: {
+    temp: -3, condition: '暴雪', sub: '积雪深厚 · 最高 -1° 最低 -8°',
+    humidity: '78%', wind: '28 km/h', uv: '2'
+  }
+};
+
+// 生成雨滴
+function createRain() {
+  const container = document.getElementById('rainContainer');
+  container.innerHTML = '';
+  const count = 70;
+  for (let i = 0; i < count; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'raindrop';
+    const left = Math.random() * 105 - 5;
+    const height = 18 + Math.random() * 28;
+    const duration = 0.4 + Math.random() * 0.5;
+    const delay = Math.random() * 2;
+    drop.style.left = left + '%';
+    drop.style.height = height + 'px';
+    drop.style.animationDuration = duration + 's';
+    drop.style.animationDelay = delay + 's';
+    drop.style.opacity = 0.4 + Math.random() * 0.6;
+    container.appendChild(drop);
+  }
+  // 涟漪
+  for (let i = 0; i < 6; i++) {
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    ripple.style.left = (12 + i * 16) + '%';
+    ripple.style.animationDelay = (Math.random() * 1.8) + 's';
+    container.appendChild(ripple);
+  }
+}
+
+// 生成雪花
+function createSnow() {
+  const container = document.getElementById('snowContainer');
+  container.innerHTML = '';
+  const flakes = ['❄', '❅', '❆', '✦', '✧', '·'];
+  const count = 55;
+  for (let i = 0; i < count; i++) {
+    const flake = document.createElement('div');
+    flake.className = 'snowflake';
+    flake.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+    const left = Math.random() * 100;
+    const size = 8 + Math.random() * 16;
+    const duration = 4 + Math.random() * 6;
+    const delay = Math.random() * 5;
+    const opacity = 0.4 + Math.random() * 0.6;
+    const drift = (Math.random() - 0.5) * 80;
+    flake.style.left = left + '%';
+    flake.style.fontSize = size + 'px';
+    flake.style.animationDuration = duration + 's';
+    flake.style.animationDelay = delay + 's';
+    flake.style.opacity = opacity;
+    flake.style.setProperty('--drift', drift + 'px');
+    flake.style.filter = `blur(${Math.random() > 0.7 ? 1 : 0}px)`;
+    container.appendChild(flake);
+  }
+}
+
+// 生成风线
+function createWindLines() {
+  const container = document.getElementById('windLines');
+  container.innerHTML = '';
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const line = document.createElement('div');
+    line.className = 'wind-line';
+    const top = 8 + Math.random() * 84;
+    const width = 35 + Math.random() * 70;
+    const duration = 1.5 + Math.random() * 1.5;
+    const delay = Math.random() * 2;
+    line.style.top = top + '%';
+    line.style.width = width + 'px';
+    line.style.animationDuration = duration + 's';
+    line.style.animationDelay = delay + 's';
+    line.style.opacity = 0.4 + Math.random() * 0.5;
+    container.appendChild(line);
+  }
+}
+
+// 切换天气
+let isTransitioning = false;
+function switchWeather(weather) {
+  if (isTransitioning) return;
+  const card = document.getElementById('weatherCard');
+  if (card.getAttribute('data-weather') === weather) return;
+
+  isTransitioning = true;
+  card.setAttribute('data-weather', weather);
+
+  // 切换场景
+  document.querySelectorAll('.weather-scene').forEach(s => s.classList.remove('active'));
+  document.querySelector(`[data-scene="${weather}"]`).classList.add('active');
+
+  // 切换按钮
+  document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.weather-btn[data-weather="${weather}"]`).classList.add('active');
+
+  // 更新数据
+  const data = weatherData[weather];
+  animateNumber('tempValue', data.temp);
+
+  // 文本淡入淡出
+  const condEl = document.getElementById('conditionText');
+  const subEl = document.getElementById('conditionSub');
+  condEl.style.transition = 'opacity 0.3s';
+  subEl.style.transition = 'opacity 0.3s';
+  condEl.style.opacity = '0';
+  subEl.style.opacity = '0';
+
+  setTimeout(() => {
+    condEl.textContent = data.condition;
+    subEl.textContent = data.sub;
+    condEl.style.opacity = '1';
+    subEl.style.opacity = '1';
+  }, 300);
+
+  document.getElementById('humidityVal').textContent = data.humidity;
+  document.getElementById('windVal').textContent = data.wind;
+  document.getElementById('uvVal').textContent = data.uv;
+
+  setTimeout(() => { isTransitioning = false; }, 700);
+}
+
+// 数字滚动动画
+function animateNumber(id, target) {
+  const el = document.getElementById(id);
+  const start = parseInt(el.textContent) || 0;
+  const duration = 900;
+  const startTime = performance.now();
+
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(start + (target - start) * eased);
+    el.textContent = current;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// 绑定按钮
+document.querySelectorAll('.weather-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchWeather(btn.dataset.weather));
+});
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  const keyMap = { '1': 'sunny', '2': 'windy', '3': 'rainy', '4': 'snowy' };
+  if (keyMap[e.key]) switchWeather(keyMap[e.key]);
+});
+
+// 初始化粒子
+createRain();
+createSnow();
+createWindLines();
+
+// 鼠标视差效果（轻微）
+const card = document.getElementById('weatherCard');
+card.addEventListener('mousemove', (e) => {
+  const rect = card.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width - 0.5;
+  const y = (e.clientY - rect.top) / rect.height - 0.5;
+  card.style.transform = `perspective(1000px) rotateY(${x * 2}deg) rotateX(${-y * 2}deg)`;
+});
+
+card.addEventListener('mouseleave', () => {
+  card.style.transform = '';
+});
+</script>
+
+</body>
+</html>
