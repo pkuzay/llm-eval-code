@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>饭搭子 · 公司食堂约饭小程序</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --cream: #FFF8EE;
+  --cream-2: #FDF1DC;
+  --coral: #FFB5A7;
+  --peach: #FF9B73;
+  --peach-dark: #F08560;
+  --mint: #B8E0D2;
+  --mint-dark: #7FC8A9;
+  --butter: #FFE5A0;
+  --butter-dark: #F4C95D;
+  --lavender: #C5B7E3;
+  --lavender-dark: #9B89C9;
+  --sky: #A8DADC;
+  --sky-dark: #6FCBCF;
+  --rose: #FFC8DD;
+  --ink: #2D3142;
+  --ink-soft: #4A4E69;
+  --muted: #6B7280;
+}
+
+* { -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: 'Noto Sans SC', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+.font-hand { font-family: 'ZCOOL KuaiLe', cursive; letter-spacing: 0.02em; }
+.font-brush { font-family: 'Ma Shan Zheng', cursive; }
+
+/* 手绘边框 - 不规则圆角 */
+.hand-border {
+  border: 2.5px solid var(--ink);
+  border-radius: 24px 28px 22px 26px / 26px 22px 28px 24px;
+}
+.hand-border-2 {
+  border: 2.5px solid var(--ink);
+  border-radius: 30px 24px 28px 22px / 22px 28px 24px 30px;
+}
+.hand-border-sm {
+  border: 2px solid var(--ink);
+  border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px;
+}
+.hand-border-circle {
+  border: 2.5px solid var(--ink);
+  border-radius: 48% 52% 50% 50% / 50% 48% 52% 50%;
+}
+
+/* 阴影 */
+.shadow-hand { box-shadow: 4px 4px 0 var(--ink); }
+.shadow-hand-lg { box-shadow: 6px 6px 0 var(--ink); }
+.shadow-hand-sm { box-shadow: 2px 2px 0 var(--ink); }
+
+/* 手机框架 */
+.phone {
+  width: 280px;
+  background: var(--ink);
+  border-radius: 42px 38px 40px 36px / 38px 42px 36px 40px;
+  padding: 10px;
+  position: relative;
+  box-shadow: 6px 6px 0 var(--ink);
+  flex-shrink: 0;
+}
+.phone-screen {
+  background: var(--cream);
+  border-radius: 32px 30px 32px 30px / 30px 32px 30px 32px;
+  overflow: hidden;
+  position: relative;
+  height: 580px;
+}
+
+/* 点阵背景 */
+.dot-bg {
+  background-image: radial-gradient(circle, var(--ink) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.05;
+}
+
+/* 波浪下划线 */
+.wave-underline {
+  position: relative;
+  display: inline-block;
+}
+.wave-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 8' preserveAspectRatio='none'><path d='M0 4 Q 7.5 0, 15 4 T 30 4 T 45 4 T 60 4' stroke='%23F08560' fill='none' stroke-width='2.5' stroke-linecap='round'/></svg>");
+  background-repeat: repeat-x;
+  background-size: 30px 8px;
+}
+
+/* 圈圈高亮 */
+.circle-highlight {
+  position: relative;
+  display: inline-block;
+}
+.circle-highlight::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -10px;
+  right: -10px;
+  bottom: -2px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'><path d='M5 25 Q 10 5, 30 8 Q 50 5, 70 10 Q 90 5, 95 25 Q 90 35, 50 32 Q 10 35, 5 25 Z' fill='%23FFE5A0' stroke='none'/></svg>");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  z-index: -1;
+}
+
+/* 动画 */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-10px) rotate(calc(var(--rot, 0deg) + 3deg)); }
+}
+@keyframes float-rev {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-8px) rotate(calc(var(--rot, 0deg) - 3deg)); }
+}
+@keyframes wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.float-1 { animation: float 4s ease-in-out infinite; }
+.float-2 { animation: float-rev 5s ease-in-out infinite; }
+.float-3 { animation: float 6s ease-in-out infinite; }
+.wobble { animation: wobble 3s ease-in-out infinite; }
+.pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.spin-slow { animation: spin-slow 20s linear infinite; }
+.blink { animation: blink 1.5s ease-in-out infinite; }
+
+/* 标签 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border: 1.8px solid var(--ink);
+  border-radius: 14px 12px 14px 12px / 12px 14px 12px 14px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--cream);
+  transition: all 0.2s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tag:hover { transform: translate(-1px, -1px); }
+.tag-active {
+  background: var(--peach);
+  color: white;
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* 按钮 */
+.btn-hand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--peach);
+  color: white;
+  font-weight: 700;
+  border: 2.5px solid var(--ink);
+  border-radius: 18px 22px 16px 20px / 20px 16px 22px 18px;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: all 0.15s;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-hand:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.btn-hand:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn-hand-yellow {
+  background: var(--butter-dark);
+  color: var(--ink);
+}
+.btn-hand-mint {
+  background: var(--mint-dark);
+  color: white;
+}
+
+.btn-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--cream);
+  color: var(--ink);
+  font-weight: 600;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  transition: all 0.15s;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn-soft:hover {
+  background: var(--butter);
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 头像 */
+.avatar {
+  border: 2px solid var(--ink);
+  border-radius: 48% 52% 50% 50% / 52% 48% 50% 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mini-card {
+  background: white;
+  border: 2px solid var(--ink);
+  border-radius: 14px 16px 12px 14px / 12px 14px 16px 12px;
+  padding: 10px 12px;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.show { opacity: 1; transform: translateY(0); }
+
+/* 部门色块 */
+.dept-tech { background: var(--sky); color: var(--ink); }
+.dept-mkt { background: var(--coral); color: var(--ink); }
+.dept-design { background: var(--lavender); color: var(--ink); }
+.dept-hr { background: var(--mint); color: var(--ink); }
+.dept-finance { background: var(--butter); color: var(--ink); }
+.dept-product { background: var(--rose); color: var(--ink); }
+
+#toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--ink);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 20px;
+  font-weight: 600;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 100;
+  font-size: 14px;
+  box-shadow: 4px 4px 0 var(--peach);
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* 流程节点连线 */
+.flow-line {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-dasharray: 8 6;
+  stroke-linecap: round;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--cream-2); }
+::-webkit-scrollbar-thumb {
+  background: var(--peach);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+
+/* 文字描边 */
+.text-stroke {
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- 点阵背景 -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="absolute inset-0 dot-bg"></div>
+</div>
+
+<!-- ============== Hero Section ============== -->
+<section class="relative pt-8 pb-20 z-10">
+  <!-- 飘浮装饰 -->
+  <div class="absolute top-32 left-4 float-1 hidden md:block" style="--rot: -10deg">
+    <svg width="64" height="64" viewBox="0 0 60 60">
+      <ellipse cx="30" cy="35" rx="22" ry="6" fill="#FFE5A0" stroke="#2D3142" stroke-width="2.5"/>
+      <path d="M8 35 Q 8 50, 30 50 Q 52 50, 52 35" fill="#FFE5A0" stroke="#2D3142" stroke-width="2.5"/>
+      <line x1="35" y1="15" x2="50" y2="35" stroke="#2D3142" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="40" y1="15" x2="55" y2="35" stroke="#2D3142" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M22 25 Q 20 20, 24 15 Q 28 10, 26 5" fill="none" stroke="#2D3142" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+      <path d="M32 25 Q 30 20, 34 15 Q 38 10, 36 5" fill="none" stroke="#2D3142" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+    </svg>
+  </div>
+  
+  <div class="absolute top-48 right-8 float-2 hidden md:block" style="--rot: 15deg">
+    <svg width="56" height="56" viewBox="0 0 50 50">
+      <path d="M10 15 L 12 40 Q 12 45, 17 45 L 33 45 Q 38 45, 38 40 L 40 15 Z" fill="#FFB5A7" stroke="#2D3142" stroke-width="2.5"/>
+      <ellipse cx="25" cy="15" rx="15" ry="3" fill="#7FC8A9" stroke="#2D3142" stroke-width="2.5"/>
+      <path d="M40 22 Q 47 22, 47 30 Q 47 38, 40 38" fill="none" stroke="#2D3142" stroke-width="2.5"/>
+    </svg>
+  </div>
+
+  <div class="absolute top-24 right-1/3 float-3 hidden lg:block" style="--rot: -5deg">
+    <svg width="36" height="36" viewBox="0 0 40 40">
+      <path d="M20 5 L 24 16 L 36 16 L 26 23 L 30 35 L 20 28 L 10 35 L 14 23 L 4 16 L 16 16 Z" fill="#F4C95D" stroke="#2D3142" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="absolute bottom-20 left-1/4 float-1 hidden lg:block" style="--rot: 8deg">
+    <svg width="44" height="44" viewBox="0 0 44 44">
+      <path d="M22 38 C 8 28, 8 14, 16 12 C 20 11, 22 14, 22 18 C 22 14, 24 11, 28 12 C 36 14, 36 28, 22 38 Z" fill="#FFC8DD" stroke="#2D3142" stroke-width="2.5"/>
+    </svg>
+  </div>
+
+  <div class="container mx-auto px-6 max-w-7xl relative">
+    <!-- 顶部导航 -->
+    <nav class="flex items-center justify-between mb-12">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 hand-border-circle flex items-center justify-center shadow-hand-sm" style="background: var(--peach)">
+          <span class="font-hand text-2xl text-white">饭</span>
+        </div>
+        <div>
+          <div class="font-hand text-2xl leading-none">饭搭子</div>
+          <div class="text-xs text-gray-500 tracking-wider">LUNCH BUDDY</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="btn-soft hidden sm:inline-flex" onclick="showToast('小程序码已复制到剪贴板')">
+          <i class="fa-brands fa-weixin"></i> 微信扫码
+        </button>
+        <button class="btn-hand" onclick="showToast('已加入内测名单，等待通知')">
+          申请内测 <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+    </nav>
+
+    <div class="grid grid-cols-12 gap-8 items-center">
+      <!-- 左侧文字 -->
+      <div class="col-span-12 lg:col-span-5">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-6 hand-border-sm shadow-hand-sm" style="background: var(--butter)">
+          <span class="w-2 h-2 rounded-full blink" style="background: var(--peach-dark)"></span>
+          <span class="text-xs font-bold">微信小程序 · 企业内部社交</span>
+        </div>
+        
+        <h1 class="font-hand text-6xl md:text-7xl lg:text-8xl leading-none mb-6">
+          一个人吃饭<br>
+          <span class="relative inline-block">
+            <span class="circle-highlight">太无聊</span>啦
+          </span>
+        </h1>
+        
+        <p class="text-lg md:text-xl font-bold mb-4 leading-relaxed">
+          约个<span class="wave-underline">跨部门</span>的新朋友，<br>
+          从一顿午饭开始打破部门墙。
+        </p>
+        
+        <p class="text-sm text-gray-600 mb-8 leading-relaxed">
+          基于用餐时间、食堂地点、人数偏好与兴趣标签智能匹配，随机组局让每次午餐都成为一次微型社交冒险。
+        </p>
+        
+        <div class="grid grid-cols-3 gap-3 mb-8">
+          <div class="mini-card text-center" style="background: var(--coral)">
+            <div class="font-hand text-2xl md:text-3xl leading-none">1,287</div>
+            <div class="text-xs text-gray-700 mt-1">已撮合饭局</div>
+          </div>
+          <div class="mini-card text-center" style="background: var(--mint)">
+            <div class="font-hand text-2xl md:text-3xl leading-none">23</div>
+            <div class="text-xs text-gray-700 mt-1">部门互联</div>
+          </div>
+          <div class="mini-card text-center" style="background: var(--lavender)">
+            <div class="font-hand text-2xl md:text-3xl leading-none">94%</div>
+            <div class="text-xs text-gray-700 mt-1">再次使用</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <div class="flex -space-x-2">
+            <div class="w-7 h-7 avatar dept-tech text-xs">技</div>
+            <div class="w-7 h-7 avatar dept-mkt text-xs">市</div>
+            <div class="w-7 h-7 avatar dept-design text-xs">设</div>
+            <div class="w-7 h-7 avatar dept-hr text-xs">人</div>
+          </div>
+          <span>已有 <b class="text-black">2,468</b> 位同事加入</span>
+        </div>
+      </div>
+      
+      <!-- 右侧手机展示 -->
+      <div class="col-span-12 lg:col-span-7 relative">
+        <div class="relative h-[640px] flex justify-center items-center">
+          
+          <!-- 手机1：发起约饭 -->
+          <div class="absolute left-0 top-8 phone float-1 hidden md:block" style="--rot: -6deg; transform: rotate(-6deg)">
+            <div class="phone-screen">
+              <!-- 状态栏 -->
+              <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+                <span>9:41</span>
+                <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+              </div>
+              <!-- 导航 -->
+              <div class="flex items-center justify-between px-4 py-2">
+                <div class="w-8 h-8 avatar dept-mkt">林</div>
+                <div class="font-hand text-base">饭搭子</div>
+                <div class="w-8 h-8 flex items-center justify-center relative">
+                  <i class="fa-regular fa-bell text-sm"></i>
+                  <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style="background: var(--peach-dark)"></span>
+                </div>
+              </div>
+              <!-- 内容 -->
+              <div class="px-3 pb-2 overflow-hidden">
+                <div class="px-1 mb-3">
+                  <div class="font-hand text-xl leading-tight">嘿，林小满 👋</div>
+                  <div class="text-[10px] text-gray-500">今天想和谁一起吃饭？</div>
+                </div>
+                
+                <div class="mini-card mb-2" style="background: var(--butter); padding: 8px 10px">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-bold"><i class="fa-regular fa-clock"></i> 用餐时间</span>
+                  </div>
+                  <div class="flex gap-1 mb-1.5">
+                    <span class="tag tag-active">今天</span>
+                    <span class="tag">明天</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <span class="tag tag-active">午餐 12:00</span>
+                    <span class="tag">晚餐 18:30</span>
+                  </div>
+                </div>
+                
+                <div class="mini-card mb-2" style="background: var(--mint); padding: 8px 10px">
+                  <div class="text-[10px] font-bold mb-1.5"><i class="fa-solid fa-location-dot"></i> 食堂地点</div>
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2 text-[10px]">
+                      <span class="w-2.5 h-2.5 rounded-full border-2 border-black" style="background: var(--peach)"></span>
+                      <span class="font-bold">A食堂·亚洲风味</span>
+                      <span class="text-gray-500 ml-auto">3F</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px]">
+                      <span class="w-2.5 h-2.5 rounded-full border-2 border-black bg-white"></span>
+                      <span>B食堂·西式简餐</span>
+                      <span class="text-gray-500 ml-auto">2F</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mini-card mb-2" style="background: var(--lavender); padding: 8px 10px">
+                  <div class="text-[10px] font-bold mb-1.5"><i class="fa-solid fa-user-group"></i> 人数偏好</div>
+                  <div class="flex gap-1">
+                    <span class="tag">2-3人</span>
+                    <span class="tag tag-active">4-5人</span>
+                    <span class="tag">6-8人</span>
+                  </div>
+                </div>
+                
+                <div class="mini-card mb-3" style="background: var(--coral); padding: 8px 10px">
+                  <div class="text-[10px] font-bold mb-1.5"><i class="fa-solid fa-hashtag"></i> 兴趣标签</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="tag tag-active">电影音乐</span>
+                    <span class="tag tag-active">咖啡</span>
+                    <span class="tag">运动</span>
+                    <span class="tag">读书</span>
+                    <span class="tag">宠物</span>
+                  </div>
+                </div>
+                
+                <button class="btn-hand w-full text-xs py-2">
+                  <i class="fa-solid fa-utensils"></i> 找饭搭子
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 手机2：匹配成功（中央） -->
+          <div class="absolute z-20 phone" style="top: 0; left: 50%; transform: translateX(-50%)">
+            <div class="phone-screen">
+              <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+                <span>9:42</span>
+                <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2">
+                <i class="fa-solid fa-chevron-left text-sm"></i>
+                <div class="font-hand text-base">组局详情</div>
+                <i class="fa-solid fa-ellipsis text-sm"></i>
+              </div>
+              
+              <div class="px-4 pt-2">
+                <!-- 成功提示 -->
+                <div class="text-center mb-4">
+                  <div class="inline-flex items-center gap-1 px-3 py-1 hand-border-sm mb-2" style="background: var(--mint)">
+                    <i class="fa-solid fa-check text-[10px]"></i>
+                    <span class="text-[10px] font-bold">匹配成功</span>
+                  </div>
+                  <div class="font-hand text-2xl leading-tight">你们将一起午餐</div>
+                  <div class="text-[10px] text-gray-500">已有 3 位同事加入</div>
+                </div>
+                
+                <!-- 头像组 -->
+                <div class="flex justify-center mb-4">
+                  <div class="relative">
+                    <div class="avatar w-12 h-12 dept-tech absolute -left-8 top-2 text-sm">陈</div>
+                    <div class="avatar w-14 h-14 dept-mkt text-base" style="z-index: 2">林</div>
+                    <div class="avatar w-12 h-12 dept-design absolute -right-8 top-2 text-sm">王</div>
+                    <div class="avatar w-12 h-12 dept-hr absolute -left-4 -top-4 text-sm">赵</div>
+                  </div>
+                </div>
+                
+                <!-- 部门标签 -->
+                <div class="flex flex-wrap justify-center gap-1 mb-3">
+                  <span class="tag dept-tech">技术部·陈思远</span>
+                  <span class="tag dept-design">设计部·王梓涵</span>
+                  <span class="tag dept-hr">人事部·赵雅</span>
+                </div>
+                
+                <!-- 共同兴趣 -->
+                <div class="mini-card mb-3" style="background: var(--butter); padding: 8px 10px">
+                  <div class="text-[10px] font-bold mb-1.5"><i class="fa-solid fa-heart"></i> 共同兴趣</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span class="tag tag-active">#电影爱好者</span>
+                    <span class="tag tag-active">#咖啡控</span>
+                  </div>
+                </div>
+                
+                <!-- 集合信息 -->
+                <div class="mini-card mb-3" style="background: var(--coral); padding: 10px">
+                  <div class="space-y-1.5 text-[10px]">
+                    <div class="flex items-center gap-2">
+                      <i class="fa-regular fa-calendar"></i>
+                      <span class="font-bold">今天 12:00 - 13:00</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fa-solid fa-location-dot"></i>
+                      <span>A食堂 · 二楼靠窗区</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fa-solid fa-user-group"></i>
+                      <span>4人小聚 · 跨3个部门</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 破冰话题 -->
+                <div class="mini-card mb-3" style="background: var(--lavender); padding: 8px 10px">
+                  <div class="text-[10px] font-bold mb-1"><i class="fa-solid fa-lightbulb"></i> 破冰话题建议</div>
+                  <div class="text-[10px] text-gray-700">最近看了什么好电影？</div>
+                </div>
+                
+                <div class="flex gap-2">
+                  <button class="btn-soft flex-1 text-xs" onclick="event.stopPropagation(); showToast('已婉拒，下次再约')">
+                    临时有事
+                  </button>
+                  <button class="btn-hand flex-1 text-xs" onclick="event.stopPropagation(); showToast('已确认参加！期待饭局')">
+                    确认加入
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 手机3：话题小组 -->
+          <div class="absolute right-0 top-16 phone float-2 hidden md:block" style="--rot: 6deg; transform: rotate(6deg)">
+            <div class="phone-screen">
+              <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+                <span>9:43</span>
+                <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+              </div>
+              <div class="flex items-center justify-between px-4 py-2">
+                <i class="fa-solid fa-chevron-left text-sm"></i>
+                <div class="font-hand text-base">话题小组</div>
+                <i class="fa-solid fa-plus text-sm"></i>
+              </div>
+              
+              <div class="px-3">
+                <div class="px-1 mb-3">
+                  <div class="font-hand text-xl leading-tight">找找你的同好 👀</div>
+                  <div class="text-[10px] text-gray-500">加入小组，饭局更对味</div>
+                </div>
+                
+                <!-- 搜索 -->
+                <div class="mini-card mb-3 flex items-center gap-2" style="background: var(--cream-2); padding: 8px 10px">
+                  <i class="fa-solid fa-magnifying-glass text-[10px] text-gray-500"></i>
+                  <span class="text-[10px] text-gray-500">搜索话题或关键词...</span>
+                </div>
+                
+                <!-- 分类 -->
+                <div class="flex gap-1 mb-3 overflow-x-auto no-scrollbar">
+                  <span class="tag tag-active">全部</span>
+                  <span class="tag">影视</span>
+                  <span class="tag">运动</span>
+                  <span class="tag">读书</span>
+                  <span class="tag">美食</span>
+                </div>
+                
+                <!-- 小组卡片 -->
+                <div class="mini-card mb-2" style="background: var(--coral); padding: 10px">
+                  <div class="flex items-start gap-2 mb-1.5">
+                    <div class="w-9 h-9 hand-border-circle flex items-center justify-center text-base" style="background: var(--peach)">
+                      <i class="fa-solid fa-film text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[11px] font-bold">电影夜话</div>
+                      <div class="text-[9px] text-gray-600">128人 · 本周3场</div>
+                    </div>
+                    <span class="tag tag-active text-[9px]">加入</span>
+                  </div>
+                  <div class="text-[9px] text-gray-700 italic">"今晚谁来聊《奥本海默》？"</div>
+                </div>
+                
+                <div class="mini-card mb-2" style="background: var(--mint); padding: 10px">
+                  <div class="flex items-start gap-2 mb-1.5">
+                    <div class="w-9 h-9 hand-border-circle flex items-center justify-center" style="background: var(--mint-dark)">
+                      <i class="fa-solid fa-mug-hot text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[11px] font-bold">咖啡品鉴</div>
+                      <div class="text-[9px] text-gray-600">86人 · 本周1场</div>
+                    </div>
+                    <span class="tag text-[9px]">加入</span>
+                  </div>
+                  <div class="text-[9px] text-gray-700 italic">"周五手冲分享会报名啦"</div>
+                </div>
+                
+                <div class="mini-card mb-2" style="background: var(--lavender); padding: 10px">
+                  <div class="flex items-start gap-2 mb-1.5">
+                    <div class="w-9 h-9 hand-border-circle flex items-center justify-center" style="background: var(--lavender-dark)">
+                      <i class="fa-solid fa-book text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[11px] font-bold">读书分享会</div>
+                      <div class="text-[9px] text-gray-600">54人 · 本周2场</div>
+                    </div>
+                    <span class="tag text-[9px]">加入</span>
+                  </div>
+                  <div class="text-[9px] text-gray-700 italic">"本周共读《被讨厌的勇气》"</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 核心功能 Section ============== -->
+<section class="relative py-20 z-10" style="background: var(--cream-2)">
+  <div class="absolute inset-0 dot-bg"></div>
+  <div class="container mx-auto px-6 max-w-7xl relative">
+    <div class="text-center mb-16 reveal">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-4 hand-border-sm" style="background: var(--coral)">
+        <i class="fa-solid fa-sparkles text-xs"></i>
+        <span class="text-xs font-bold">CORE FEATURES</span>
+      </div>
+      <h2 class="font-hand text-5xl md:text-6xl mb-3">六大核心功能</h2>
+      <p class="text-gray-600 text-sm">让跨部门社交自然发生，从一次约饭开始</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- 卡片1 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--butter); transform: rotate(-1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--peach)">
+          <i class="fa-solid fa-shuffle text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">随机智能匹配</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">基于时间、地点、人数与兴趣标签的多维度算法，30秒内为你找到最合适的饭搭子组合。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">算法撮合</span>
+          <span class="tag">30秒响应</span>
+        </div>
+      </div>
+      
+      <!-- 卡片2 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--mint); transform: rotate(1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--mint-dark)">
+          <i class="fa-solid fa-people-arrows text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">跨部门组局</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">系统优先匹配不同部门的同事，打破部门墙，让你认识技术、设计、市场的新朋友。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">优先跨部门</span>
+          <span class="tag">≥3个部门</span>
+        </div>
+      </div>
+      
+      <!-- 卡片3 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--coral); transform: rotate(-1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--lavender-dark)">
+          <i class="fa-solid fa-comments text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">话题小组</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">电影、咖啡、运动、读书...找到你的同好圈子，让饭桌上的话题永远不断。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">兴趣社群</span>
+          <span class="tag">破冰话题</span>
+        </div>
+      </div>
+      
+      <!-- 卡片4 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--lavender); transform: rotate(1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--sky-dark)">
+          <i class="fa-solid fa-tags text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">兴趣标签</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">30+ 兴趣标签自由组合，精准定位同频同事，让匹配更有"共同语言"。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">30+ 标签</span>
+          <span class="tag">自由组合</span>
+        </div>
+      </div>
+      
+      <!-- 卡片5 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--sky); transform: rotate(-1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--rose)">
+          <i class="fa-solid fa-bell text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">饭局提醒</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">饭前30分钟、5分钟两次提醒，附上同桌同事信息与破冰话题，绝不迟到冷场。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">双重提醒</span>
+          <span class="tag">破冰提示</span>
+        </div>
+      </div>
+      
+      <!-- 卡片6 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--rose); transform: rotate(1deg)">
+        <div class="w-14 h-14 hand-border-circle flex items-center justify-center mb-4 shadow-hand-sm" style="background: var(--butter-dark)">
+          <i class="fa-solid fa-circle-check text-2xl text-white"></i>
+        </div>
+        <h3 class="font-hand text-2xl mb-2">报名确认</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">一键确认或婉拒，系统自动调整人数；爽约自动记录，保障每位同事的体验。</p>
+        <div class="mt-4 flex flex-wrap gap-1.5">
+          <span class="tag">一键确认</span>
+          <span class="tag">信用机制</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 用户旅程 Section ============== -->
+<section class="relative py-20 z-10">
+  <div class="container mx-auto px-6 max-w-7xl">
+    <div class="text-center mb-16 reveal">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-4 hand-border-sm" style="background: var(--lavender)">
+        <i class="fa-solid fa-route text-xs"></i>
+        <span class="text-xs font-bold">USER JOURNEY</span>
+      </div>
+      <h2 class="font-hand text-5xl md:text-6xl mb-3">五步开启约饭</h2>
+      <p class="text-gray-600 text-sm">从发起约饭到餐后反馈，全流程不超过 2 分钟</p>
+    </div>
+
+    <!-- 流程图 -->
+    <div class="relative">
+      <!-- SVG连线 (桌面端) -->
+      <svg class="absolute top-12 left-0 right-0 w-full h-12 hidden lg:block" viewBox="0 0 1200 60" preserveAspectRatio="none">
+        <path class="flow-line" d="M 200 30 Q 350 0, 400 30 T 600 30 T 800 30 T 1000 30" />
+      </svg>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 relative">
+        <!-- Step 1 -->
+        <div class="text-center reveal">
+          <div class="relative inline-block mb-4">
+            <div class="w-24 h-24 hand-border-circle flex items-center justify-center shadow-hand pulse-soft" style="background: var(--butter)">
+              <i class="fa-solid fa-sliders text-3xl"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 hand-border-circle flex items-center justify-center font-hand text-base text-white shadow-hand-sm" style="background: var(--peach)">1</div>
+          </div>
+          <h4 class="font-hand text-xl mb-1">选择偏好</h4>
+          <p class="text-xs text-gray-600">时间、食堂、人数、标签</p>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="text-center reveal">
+          <div class="relative inline-block mb-4">
+            <div class="w-24 h-24 hand-border-circle flex items-center justify-center shadow-hand pulse-soft" style="background: var(--coral); animation-delay: 0.3s">
+              <i class="fa-solid fa-magnifying-glass text-3xl text-white"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 hand-border-circle flex items-center justify-center font-hand text-base text-white shadow-hand-sm" style="background: var(--peach)">2</div>
+          </div>
+          <h4 class="font-hand text-xl mb-1">智能匹配</h4>
+          <p class="text-xs text-gray-600">算法30秒内撮合</p>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="text-center reveal">
+          <div class="relative inline-block mb-4">
+            <div class="w-24 h-24 hand-border-circle flex items-center justify-center shadow-hand pulse-soft" style="background: var(--mint); animation-delay: 0.6s">
+              <i class="fa-solid fa-check text-3xl text-white"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 hand-border-circle flex items-center justify-center font-hand text-base text-white shadow-hand-sm" style="background: var(--peach)">3</div>
+          </div>
+          <h4 class="font-hand text-xl mb-1">确认报名</h4>
+          <p class="text-xs text-gray-600">查看同桌，一键确认</p>
+        </div>
+        
+        <!-- Step 4 -->
+        <div class="text-center reveal">
+          <div class="relative inline-block mb-4">
+            <div class="w-24 h-24 hand-border-circle flex items-center justify-center shadow-hand pulse-soft" style="background: var(--lavender); animation-delay: 0.9s">
+              <i class="fa-solid fa-utensils text-3xl text-white"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 hand-border-circle flex items-center justify-center font-hand text-base text-white shadow-hand-sm" style="background: var(--peach)">4</div>
+          </div>
+          <h4 class="font-hand text-xl mb-1">愉快用餐</h4>
+          <p class="text-xs text-gray-600">赴约，开聊，交朋友</p>
+        </div>
+        
+        <!-- Step 5 -->
+        <div class="text-center reveal">
+          <div class="relative inline-block mb-4">
+            <div class="w-24 h-24 hand-border-circle flex items-center justify-center shadow-hand pulse-soft" style="background: var(--rose); animation-delay: 1.2s">
+              <i class="fa-solid fa-heart text-3xl text-white"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 hand-border-circle flex items-center justify-center font-hand text-base text-white shadow-hand-sm" style="background: var(--peach)">5</div>
+          </div>
+          <h4 class="font-hand text-xl mb-1">餐后反馈</h4>
+          <p class="text-xs text-gray-600">收藏好友，下次再约</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 更多页面展示 Section ============== -->
+<section class="relative py-20 z-10" style="background: var(--cream-2)">
+  <div class="absolute inset-0 dot-bg"></div>
+  <div class="container mx-auto px-6 max-w-7xl relative">
+    <div class="text-center mb-16 reveal">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-4 hand-border-sm" style="background: var(--mint)">
+        <i class="fa-solid fa-mobile-screen text-xs"></i>
+        <span class="text-xs font-bold">MORE SCREENS</span>
+      </div>
+      <h2 class="font-hand text-5xl md:text-6xl mb-3">更多页面设计</h2>
+      <p class="text-gray-600 text-sm">每一个细节都为社交体验而设计</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
+      
+      <!-- 匹配中页面 -->
+      <div class="phone reveal" style="transform: rotate(-2deg)">
+        <div class="phone-screen">
+          <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+            <span>9:41</span>
+            <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-2">
+            <i class="fa-solid fa-xmark text-sm"></i>
+            <div class="font-hand text-base">匹配中</div>
+            <div class="w-4"></div>
+          </div>
+          
+          <div class="px-4 pt-8 text-center">
+            <!-- 动画图标 -->
+            <div class="relative w-32 h-32 mx-auto mb-6">
+              <div class="absolute inset-0 hand-border-circle spin-slow" style="background: var(--butter); border-style: dashed"></div>
+              <div class="absolute inset-3 hand-border-circle flex items-center justify-center pulse-soft" style="background: var(--peach)">
+                <i class="fa-solid fa-utensils text-3xl text-white"></i>
+              </div>
+              <!-- 飘浮的小点 -->
+              <div class="absolute -top-2 left-4 w-3 h-3 rounded-full blink" style="background: var(--coral)"></div>
+              <div class="absolute top-8 -right-2 w-2 h-2 rounded-full blink" style="background: var(--mint-dark); animation-delay: 0.3s"></div>
+              <div class="absolute -bottom-1 right-8 w-2.5 h-2.5 rounded-full blink" style="background: var(--lavender-dark); animation-delay: 0.6s"></div>
+            </div>
+            
+            <div class="font-hand text-2xl mb-2">正在寻找饭搭子...</div>
+            <div class="text-[10px] text-gray-500 mb-6">已等待 12 秒，匹配进行中</div>
+            
+            <div class="mini-card mb-3 text-left" style="background: var(--butter); padding: 10px">
+              <div class="text-[10px] font-bold mb-2">本次匹配条件</div>
+              <div class="space-y-1 text-[10px]">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">时间</span>
+                  <span class="font-bold">今天 12:00</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">地点</span>
+                  <span class="font-bold">A食堂·亚洲风味</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">人数</span>
+                  <span class="font-bold">4-5人热聊</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">标签</span>
+                  <span class="font-bold">电影音乐·咖啡</span>
+                </div>
+              </div>
+            </div>
+            
+            <button class="btn-soft text-xs" onclick="showToast('已取消匹配')">
+              取消匹配
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 我的饭局页面 -->
+      <div class="phone reveal" style="transform: rotate(1deg)">
+        <div class="phone-screen">
+          <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+            <span>9:41</span>
+            <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-2">
+            <i class="fa-solid fa-chevron-left text-sm"></i>
+            <div class="font-hand text-base">我的饭局</div>
+            <i class="fa-solid fa-filter text-sm"></i>
+          </div>
+          
+          <div class="px-3">
+            <!-- Tab -->
+            <div class="flex gap-2 mb-3 px-1">
+              <span class="tag tag-active">即将到来</span>
+              <span class="tag">历史饭局</span>
+              <span class="tag">收藏</span>
+            </div>
+            
+            <!-- 即将到来 -->
+            <div class="mini-card mb-2" style="background: var(--coral); padding: 10px">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full blink" style="background: var(--peach-dark)"></span>
+                  30分钟后开始
+                </span>
+                <span class="text-[9px] text-gray-600">今天 12:00</span>
+              </div>
+              <div class="text-[11px] font-bold mb-1">A食堂·亚洲风味</div>
+              <div class="flex items-center gap-1 mb-2">
+                <div class="flex -space-x-1">
+                  <div class="w-5 h-5 avatar dept-tech text-[8px]">陈</div>
+                  <div class="w-5 h-5 avatar dept-design text-[8px]">王</div>
+                  <div class="w-5 h-5 avatar dept-hr text-[8px]">赵</div>
+                </div>
+                <span class="text-[9px] text-gray-600">+ 你</span>
+              </div>
+              <div class="flex gap-1">
+                <span class="tag text-[9px]" style="background: white">#电影爱好者</span>
+                <span class="tag text-[9px]" style="background: white">#咖啡控</span>
+              </div>
+            </div>
+            
+            <div class="mini-card mb-3" style="background: var(--butter); padding: 10px">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold">明天 18:30</span>
+                <span class="text-[9px] text-gray-600">晚餐</span>
+              </div>
+              <div class="text-[11px] font-bold mb-1">B食堂·西式简餐</div>
+              <div class="flex items-center gap-1">
+                <div class="flex -space-x-1">
+                  <div class="w-5 h-5 avatar dept-finance text-[8px]">李</div>
+                  <div class="w-5 h-5 avatar dept-product text-[8px]">周</div>
+                </div>
+                <span class="text-[9px] text-gray-600">+ 你</span>
+              </div>
+            </div>
+            
+            <!-- 跨部门统计 -->
+            <div class="mini-card" style="background: var(--lavender); padding: 10px">
+              <div class="text-[10px] font-bold mb-2 flex items-center gap-1">
+                <i class="fa-solid fa-chart-pie"></i> 本月跨部门社交
+              </div>
+              <div class="flex items-end gap-1 h-12 mb-1">
+                <div class="flex-1 rounded-t" style="background: var(--peach); height: 60%"></div>
+                <div class="flex-1 rounded-t" style="background: var(--mint-dark); height: 80%"></div>
+                <div class="flex-1 rounded-t" style="background: var(--sky-dark); height: 45%"></div>
+                <div class="flex-1 rounded-t" style="background: var(--lavender-dark); height: 90%"></div>
+                <div class="flex-1 rounded-t" style="background: var(--rose); height: 30%"></div>
+              </div>
+              <div class="flex justify-between text-[8px] text-gray-600">
+                <span>技术</span><span>市场</span><span>设计</span><span>人事</span><span>财务</span>
+              </div>
+              <div class="text-[10px] mt-2 text-center">
+                已认识 <b class="font-hand text-base">17</b> 位跨部门同事
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 饭局提醒页面 -->
+      <div class="phone reveal" style="transform: rotate(-1deg)">
+        <div class="phone-screen">
+          <div class="flex items-center justify-between px-5 pt-3 pb-1 text-[10px] font-bold">
+            <span>11:30</span>
+            <span class="flex gap-1"><i class="fa-solid fa-signal text-[8px]"></i><i class="fa-solid fa-wifi text-[8px]"></i><i class="fa-solid fa-battery-full text-[8px]"></i></span>
+          </div>
+          
+          <div class="px-4 pt-6">
+            <!-- 提醒卡片 -->
+            <div class="hand-border p-4 mb-4 shadow-hand wobble" style="background: var(--butter)">
+              <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-bell text-base" style="color: var(--peach-dark)"></i>
+                <span class="text-xs font-bold">饭局提醒 · 30分钟后</span>
+              </div>
+              <div class="font-hand text-xl mb-2">该准备出发啦！</div>
+              <div class="text-[10px] text-gray-700 mb-3">你的饭搭子们已经在路上了</div>
+              
+              <div class="space-y-2 text-[10px]">
+                <div class="flex items-center gap-2">
+                  <i class="fa-regular fa-clock w-3"></i>
+                  <span class="font-bold">12:00 - 13:00</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-location-dot w-3"></i>
+                  <span>A食堂 · 二楼靠窗区</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 同桌同事 -->
+            <div class="text-[10px] font-bold mb-2 px-1">同桌同事</div>
+            <div class="space-y-2 mb-4">
+              <div class="mini-card flex items-center gap-2" style="background: var(--coral); padding: 8px">
+                <div class="avatar w-8 h-8 dept-tech text-xs">陈</div>
+                <div class="flex-1">
+                  <div class="text-[10px] font-bold">陈思远 · 技术部</div>
+                  <div class="text-[9px] text-gray-600">同样喜欢诺兰电影</div>
+                </div>
+                <i class="fa-regular fa-comment text-[10px]"></i>
+              </div>
+              <div class="mini-card flex items-center gap-2" style="background: var(--mint); padding: 8px">
+                <div class="avatar w-8 h-8 dept-design text-xs">王</div>
+                <div class="flex-1">
+                  <div class="text-[10px] font-bold">王梓涵 · 设计部</div>
+                  <div class="text-[9px] text-gray-600">咖啡重度爱好者</div>
+                </div>
+                <i class="fa-regular fa-comment text-[10px]"></i>
+              </div>
+              <div class="mini-card flex items-center gap-2" style="background: var(--lavender); padding: 8px">
+                <div class="avatar w-8 h-8 dept-hr text-xs">赵</div>
+                <div class="flex-1">
+                  <div class="text-[10px] font-bold">赵雅 · 人事部</div>
+                  <div class="text-[9px] text-gray-600">刚从日本旅行回来</div>
+                </div>
+                <i class="fa-regular fa-comment text-[10px]"></i>
+              </div>
+            </div>
+            
+            <!-- 破冰话题 -->
+            <div class="mini-card mb-3" style="background: var(--rose); padding: 10px">
+              <div class="text-[10px] font-bold mb-1.5 flex items-center gap-1">
+                <i class="fa-solid fa-lightbulb"></i> 破冰话题推荐
+              </div>
+              <div class="space-y-1 text-[10px] text-gray-700">
+                <div>· 最近看了什么好电影？</div>
+                <div>· 推荐一家你最喜欢的咖啡馆</div>
+                <div>· 日本旅行有什么趣事？</div>
+              </div>
+            </div>
+            
+            <button class="btn-hand w-full text-xs py-2" onclick="showToast('导航已开启，前往A食堂')">
+              <i class="fa-solid fa-route"></i> 导航去食堂
+            </button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</section>
+
+<!-- ============== 设计系统 Section ============== -->
+<section class="relative py-20 z-10">
+  <div class="container mx-auto px-6 max-w-7xl">
+    <div class="text-center mb-16 reveal">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-4 hand-border-sm" style="background: var(--rose)">
+        <i class="fa-solid fa-palette text-xs"></i>
+        <span class="text-xs font-bold">DESIGN SYSTEM</span>
+      </div>
+      <h2 class="font-hand text-5xl md:text-6xl mb-3">低饱和多巴胺</h2>
+      <p class="text-gray-600 text-sm">手绘风视觉语言，让社交氛围轻松温暖</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 色彩 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: white">
+        <h3 class="font-hand text-2xl mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-droplet" style="color: var(--peach)"></i> 色彩系统
+        </h3>
+        <div class="space-y-2.5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--peach)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">珊瑚桃 Peach</div>
+              <div class="text-[10px] text-gray-500 font-mono">#FF9B73 · 主色</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--mint-dark)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">薄荷绿 Mint</div>
+              <div class="text-[10px] text-gray-500 font-mono">#7FC8A9 · 辅色</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--butter-dark)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">奶油黄 Butter</div>
+              <div class="text-[10px] text-gray-500 font-mono">#F4C95D · 点缀</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--lavender-dark)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">薰衣草 Lavender</div>
+              <div class="text-[10px] text-gray-500 font-mono">#9B89C9 · 辅色</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--sky-dark)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">天空蓝 Sky</div>
+              <div class="text-[10px] text-gray-500 font-mono">#6FCBCF · 辅色</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 hand-border-sm shadow-hand-sm" style="background: var(--ink)"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold">墨水蓝 Ink</div>
+              <div class="text-[10px] text-gray-500 font-mono">#2D3142 · 文字/描边</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 字体 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--butter); transform: rotate(1deg)">
+        <h3 class="font-hand text-2xl mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-font" style="color: var(--peach-dark)"></i> 字体规范
+        </h3>
+        <div class="space-y-4">
+          <div class="mini-card" style="background: white">
+            <div class="text-[10px] text-gray-500 mb-1">显示字体 · 标题</div>
+            <div class="font-hand text-3xl leading-none">饭搭子</div>
+            <div class="text-[10px] text-gray-500 mt-1">ZCOOL KuaiLe · 圆润手写</div>
+          </div>
+          <div class="mini-card" style="background: white">
+            <div class="text-[10px] text-gray-500 mb-1">UI字体 · 正文</div>
+            <div class="text-lg font-bold">一起吃午饭吧</div>
+            <div class="text-[10px] text-gray-500 mt-1">Noto Sans SC · 思源黑体</div>
+          </div>
+          <div class="mini-card" style="background: white">
+            <div class="text-[10px] text-gray-500 mb-1">装饰字体 · 强调</div>
+            <div class="font-brush text-2xl">今日开饭</div>
+            <div class="text-[10px] text-gray-500 mt-1">Ma Shan Zheng · 毛笔感</div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="mini-card py-2" style="background: white">
+              <div class="font-hand text-lg">64px</div>
+              <div class="text-[9px] text-gray-500">主标题</div>
+            </div>
+            <div class="mini-card py-2" style="background: white">
+              <div class="font-hand text-base">24px</div>
+              <div class="text-[9px] text-gray-500">副标题</div>
+            </div>
+            <div class="mini-card py-2" style="background: white">
+              <div class="font-hand text-sm">14px</div>
+              <div class="text-[9px] text-gray-500">正文</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 组件 -->
+      <div class="hand-border p-6 shadow-hand reveal" style="background: var(--mint); transform: rotate(-1deg)">
+        <h3 class="font-hand text-2xl mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-cube" style="color: var(--mint-dark)"></i> 组件示例
+        </h3>
+        <div class="space-y-3">
+          <div>
+            <div class="text-[10px] text-gray-600 mb-1.5">按钮</div>
+            <div class="flex flex-wrap gap-2">
+              <button class="btn-hand text-xs py-2 px-3">主按钮</button>
+              <button class="btn-hand btn-hand-yellow text-xs py-2 px-3">次按钮</button>
+              <button class="btn-soft text-xs">幽灵</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-[10px] text-gray-600 mb-1.5">标签</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="tag tag-active">已选</span>
+              <span class="tag">未选</span>
+              <span class="tag dept-tech">技术部</span>
+            </div>
+          </div>
+          <div>
+            <div class="text-[10px] text-gray-600 mb-1.5">头像组</div>
+            <div class="flex -space-x-2">
+              <div class="w-9 h-9 avatar dept-tech">技</div>
+              <div class="w-9 h-9 avatar dept-mkt">市</div>
+              <div class="w-9 h-9 avatar dept-design">设</div>
+              <div class="w-9 h-9 avatar dept-hr">人</div>
+            </div>
+          </div>
+          <div>
+            <div class="text-[10px] text-gray-600 mb-1.5">部门色块</div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-tech">技术</div>
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-mkt">市场</div>
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-design">设计</div>
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-hr">人事</div>
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-finance">财务</div>
+              <div class="hand-border-sm py-1.5 text-center text-[10px] font-bold dept-product">产品</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设计原则 -->
+    <div class="mt-10 hand-border p-8 shadow-hand reveal" style="background: white">
+      <h3 class="font-hand text-3xl mb-6 text-center">设计原则</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="text-center">
+          <div class="w-16 h-16 hand-border-circle mx-auto mb-3 flex items-center justify-center shadow-hand-sm" style="background: var(--coral)">
+            <i class="fa-solid fa-heart text-2xl text-white"></i>
+          </div>
+          <div class="font-hand text-lg mb-1">温暖亲切</div>
+          <div class="text-[11px] text-gray-600">圆润形状 + 暖色调</div>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 hand-border-circle mx-auto mb-3 flex items-center justify-center shadow-hand-sm" style="background: var(--butter)">
+            <i class="fa-solid fa-hand-sparkles text-2xl"></i>
+          </div>
+          <div class="font-hand text-lg mb-1">手绘质感</div>
+          <div class="text-[11px] text-gray-600">不规则边框 + 实色阴影</div>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 hand-border-circle mx-auto mb-3 flex items-center justify-center shadow-hand-sm" style="background: var(--mint)">
+            <i class="fa-solid fa-face-smile-beam text-2xl text-white"></i>
+          </div>
+          <div class="font-hand text-lg mb-1">轻松有趣</div>
+          <div class="text-[11px] text-gray-600">飘浮元素 + 涂鸦装饰</div>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 hand-border-circle mx-auto mb-3 flex items-center justify-center shadow-hand-sm" style="background: var(--lavender)">
+            <i class="fa-solid fa-people-group text-2xl text-white"></i>
+          </div>
+          <div class="font-hand text-lg mb-1">社交氛围</div>
+          <div class="text-[11px] text-gray-600">部门色彩 + 共同标签</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 跨部门价值 Section ============== -->
+<section class="relative py-20 z-10" style="background: var(--ink)">
+  <div class="container mx-auto px-6 max-w-7xl relative">
+    <!-- 装饰 -->
+    <div class="absolute top-10 right-10 float-1 opacity-30" style="--rot: 15deg">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <path d="M30 5 L 36 22 L 54 22 L 40 33 L 45 52 L 30 41 L 15 52 L 20 33 L 6 22 L 24 22 Z" fill="#F4C95D" stroke="#FFF8EE" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="absolute bottom-10 left-10 float-2 opacity-30" style="--rot: -10deg">
+      <svg width="50" height="50" viewBox="0 0 50 50">
+        <path d="M25 42 C 10 30, 10 14, 18 12 C 22 11, 25 14, 25 18 C 25 14, 28 11, 32 12 C 40 14, 40 30, 25 42 Z" fill="#FFB5A7" stroke="#FFF8EE" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="text-center mb-12 reveal">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-4 hand-border-sm" style="background: var(--butter); color: var(--ink)">
+        <i class="fa-solid fa-building text-xs"></i>
+        <span class="text-xs font-bold">CROSS-DEPARTMENT</span>
+      </div>
+      <h2 class="font-hand text-5xl md:text-6xl mb-3" style="color: var(--cream)">打破部门墙</h2>
+      <p class="text-sm" style="color: var(--cream); opacity: 0.7">让组织内部的连接更自然发生</p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+      <div class="hand-border p-5 text-center reveal" style="background: var(--peach)">
+        <div class="font-hand text-4xl mb-1" style="color: white">68%</div>
+        <div class="text-[11px]" style="color: white">员工表示从未跨部门交流</div>
+      </div>
+      <div class="hand-border p-5 text-center reveal" style="background: var(--mint-dark)">
+        <div class="font-hand text-4xl mb-1" style="color: white">3.2x</div>
+        <div class="text-[11px]" style="color: white">跨部门协作效率提升</div>
+      </div>
+      <div class="hand-border p-5 text-center reveal" style="background: var(--lavender-dark)">
+        <div class="font-hand text-4xl mb-1" style="color: white">87%</div>
+        <div class="text-[11px]" style="color: white">用户认为工作氛围改善</div>
+      </div>
+      <div class="hand-border p-5 text-center reveal" style="background: var(--butter-dark)">
+        <div class="font-hand text-4xl mb-1">2.1</div>
+        <div class="text-[11px]">每周平均约饭次数</div>
+      </div>
+    </div>
+
+    <div class="hand-border p-8 reveal" style="background: var(--cream)">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div>
+          <h3 class="font-hand text-3xl mb-3">不只是吃饭<br>更是组织活力的催化剂</h3>
+          <p class="text-sm text-gray-700 leading-relaxed mb-4">
+            "饭搭子"通过低门槛的午餐场景，让原本永远不会交流的同事自然相遇。一次随意的饭桌聊天，可能就是下一次跨部门协作的起点。
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span class="tag tag-active">打破信息孤岛</span>
+            <span class="tag">提升组织认同</span>
+            <span class="tag">促进创新碰撞</span>
+          </div>
+        </div>
+        <div class="relative h-48">
+          <!-- 网络关系图 -->
+          <svg viewBox="0 0 300 200" class="w-full h-full">
+            <!-- 连线 -->
+            <line x1="60" y1="60" x2="150" y2="100" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="150" y1="100" x2="240" y2="60" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="60" y1="60" x2="100" y2="150" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="150" y1="100" x2="100" y2="150" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="150" y1="100" x2="200" y2="150" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="240" y1="60" x2="200" y2="150" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <line x1="100" y1="150" x2="200" y2="150" stroke="#2D3142" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+            <!-- 节点 -->
+            <circle cx="60" cy="60" r="18" fill="#FFB5A7" stroke="#2D3142" stroke-width="2.5"/>
+            <text x="60" y="65" text-anchor="middle" font-size="12" font-weight="700" fill="#2D3142">技</text>
+            
+            <circle cx="150" cy="100" r="22" fill="#FF9B73" stroke="#2D3142" stroke-width="2.5"/>
+            <text x="150" y="106" text-anchor="middle" font-size="14" font-weight="700" fill="white">你</text>
+            
+            <circle cx="240" cy="60" r="18" fill="#C5B7E3" stroke="#2D3142" stroke-width="2.5"/>
+            <text x="240" y="65" text-anchor="middle" font-size="12" font-weight="700" fill="#2D3142">设</text>
+            
+            <circle cx="100" cy="150" r="18" fill="#B8E0D2" stroke="#2D3142" stroke-width="2.5"/>
+            <text x="100" y="155" text-anchor="middle" font-size="12" font-weight="700" fill="#2D3142">市</text>
+            
+            <circle cx="200" cy="150" r="18" fill="#A8DADC" stroke="#2D3142" stroke-width="2.5"/>
+            <text x="200" y="155" text-anchor="middle" font-size="12" font-weight="700" fill="#2D3142">人</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== CTA Section ============== -->
+<section class="relative py-20 z-10">
+  <div class="container mx-auto px-6 max-w-4xl text-center">
+    <div class="relative">
+      <!-- 飘浮装饰 -->
+      <div class="absolute -top-4 left-1/4 float-1" style="--rot: -15deg">
+        <svg width="40" height="40" viewBox="0 0 40 40">
+          <path d="M20 5 L 24 16 L 36 16 L 26 23 L 30 35 L 20 28 L 10 35 L 14 23 L 4 16 L 16 16 Z" fill="#F4C95D" stroke="#2D3142" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="absolute top-0 right-1/4 float-2" style="--rot: 10deg">
+        <svg width="36" height="36" viewBox="0 0 40 40">
+          <path d="M20 35 C 8 25, 8 14, 14 12 C 18 11, 20 13, 20 16 C 20 13, 22 11, 26 12 C 32 14, 32 25, 20 35 Z" fill="#FFC8DD" stroke="#2D3142" stroke-width="2"/>
+        </svg>
+      </div>
+      
+      <div class="hand-border-2 p-10 md:p-16 shadow-hand-lg reveal" style="background: var(--butter)">
+        <h2 class="font-hand text-5xl md:text-6xl mb-4">今天中午<br>约个新朋友？</h2>
+        <p class="text-base text-gray-700 mb-8 max-w-md mx-auto">
+          扫码加入「饭搭子」内测，从下一顿午饭开始，让你的同事圈不再只有工位邻居。
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <button class="btn-hand text-base" onclick="showToast('已加入内测名单，3个工作日内通知')">
+            <i class="fa-brands fa-weixin"></i> 申请加入内测
+          </button>
+          <button class="btn-soft text-base" onclick="showToast('产品文档已发送至邮箱')">
+            <i class="fa-regular fa-file-lines"></i> 查看产品文档
+          </button>
+        </div>
+        
+        <div class="mt-8 flex items-center justify-center gap-2 text-xs text-gray-600">
+          <div class="flex -space-x-2">
+            <div class="w-7 h-7 avatar dept-tech text-xs">技</div>
+            <div class="w-7 h-7 avatar dept-mkt text-xs">市</div>
+            <div class="w-7 h-7 avatar dept-design text-xs">设</div>
+            <div class="w-7 h-7 avatar dept-hr text-xs">人</div>
+            <div class="w-7 h-7 avatar dept-finance text-xs">财</div>
+          </div>
+          <span>已有 <b class="text-black">2,468</b> 位同事等待匹配</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Footer ============== -->
+<footer class="relative py-10 z-10 border-t-2" style="border-color: var(--ink); background: var(--cream-2)">
+  <div class="container mx-auto px-6 max-w-7xl">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 hand-border-circle flex items-center justify-center" style="background: var(--peach)">
+          <span class="font-hand text-xl text-white">饭</span>
+        </div>
+        <div>
+          <div class="font-hand text-lg leading-none">饭搭子</div>
+          <div class="text-[10px] text-gray-500">让每次午餐都有新发现</div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500 text-center">
+        © 2024 饭搭子 Lunch Buddy · 企业内部社交小程序 · 仅用于产品设计展示
+      </div>
+      <div class="flex gap-3 text-gray-500">
+        <i class="fa-brands fa-weixin text-lg cursor-pointer hover:text-black" onclick="showToast('微信：lunchbuddy_official')"></i>
+        <i class="fa-regular fa-envelope text-lg cursor-pointer hover:text-black" onclick="showToast('邮箱：hello@lunchbuddy.app')"></i>
+        <i class="fa-brands fa-github text-lg cursor-pointer hover:text-black" onclick="showToast('GitHub：lunchbuddy-app')"></i>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// Toast 提示
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
+// 滚动渐显
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('show');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// 标签点击切换效果（仅展示）
+document.querySelectorAll('.tag').forEach(tag => {
+  tag.addEventListener('click', (e) => {
+    // 只对未激活的标签做点击反馈
+    if (!tag.classList.contains('tag-active')) {
+      e.stopPropagation();
+      const parent = tag.parentElement;
+      parent.querySelectorAll('.tag-active').forEach(t => {
+        if (t !== tag && parent.children.length > 2) {
+          // 同组内只允许有限个激活
+        }
+      });
+      tag.classList.add('tag-active');
+      // 根据背景判断文字颜色
+      const bg = window.getComputedStyle(tag).backgroundColor;
+      tag.style.color = 'white';
+    }
+  });
+});
+
+// 鼠标视差 - 装饰元素跟随
+const floats = document.querySelectorAll('.float-1, .float-2, .float-3');
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', (e) => {
+  mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
+  mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
+  floats.forEach((el, i) => {
+    const factor = (i + 1) * 0.3;
+    el.style.translate = `${mouseX * factor}px ${mouseY * factor}px`;
+  });
+});
+
+// 页面加载完成提示
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    showToast('饭搭子产品设计方案 · 滚动浏览');
+  }, 600);
+});
+</script>
+
+</body>
+</html>
