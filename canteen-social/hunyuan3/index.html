@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>饭团局 - 食堂约饭小程序</title>
+  <style>
+    /* ========== 全局与变量 ========== */
+    :root {
+      --bg-color: #FDFBF7;     /* 暖白背景 */
+      --text-main: #5C5552;    /* 柔和深灰褐文字 */
+      --c-pink: #F4C2C2;       /* 低饱和粉 */
+      --c-blue: #AEC6CF;       /* 低饱和蓝 */
+      --c-yellow: #FDFD96;     /* 低饱和黄 */
+      --c-green: #B2EBF2;      /* 低饱和青 */
+      --c-purple: #C3B1E1;     /* 低饱和紫 */
+      --c-orange: #FFD1A9;     /* 低饱和橙 */
+      --border-w: 2.5px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #E8E4D9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Comic Sans MS', sans-serif;
+      color: var(--text-main);
+    }
+
+    /* 手机外框模拟 */
+    .phone-mockup {
+      width: 100%;
+      max-width: 414px;
+      height: 100vh;
+      max-height: 896px;
+      background-color: var(--bg-color);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    @media (min-width: 420px) {
+      .phone-mockup {
+        height: 90vh;
+        border-radius: 30px;
+        border: 8px solid var(--text-main);
+      }
+    }
+
+    /* ========== 手绘风通用类 ========== */
+    .hand-card {
+      background: #fff;
+      border: var(--border-w) solid var(--text-main);
+      border-radius: 25px 15px 20px 15px / 15px 20px 15px 25px;
+      box-shadow: 4px 4px 0px var(--text-main);
+      padding: 16px;
+      margin-bottom: 16px;
+      transition: transform 0.1s;
+    }
+    .hand-border-bottom { border-bottom: var(--border-w) solid var(--text-main); }
+    .hand-border-top { border-top: var(--border-w) solid var(--text-main); }
+
+    .hand-btn {
+      border: var(--border-w) solid var(--text-main);
+      border-radius: 20px 10px 25px 10px / 10px 25px 10px 20px;
+      box-shadow: 3px 3px 0px var(--text-main);
+      background: var(--c-pink);
+      color: var(--text-main);
+      font-weight: bold;
+      font-size: 16px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.1s;
+      font-family: inherit;
+    }
+    .hand-btn:active {
+      transform: translate(3px, 3px);
+      box-shadow: 0px 0px 0px var(--text-main);
+    }
+
+    /* ========== 顶部导航 ========== */
+    .app-header {
+      padding: 20px 16px 12px;
+      background: var(--c-pink);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 22px;
+    }
+
+    /* ========== 主体内容区 ========== */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background-image: radial-gradient(#E0DCD3 1px, transparent 1px);
+      background-size: 20px 20px; /* 淡淡的网格纸背景感 */
+    }
+    .tab-pane { display: none; animation: fadeIn 0.3s; }
+    .tab-pane.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .pane-title { margin-top: 0; font-size: 18px; }
+
+    /* 快捷操作 */
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .action-btn {
+      flex: 1;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 14px 0;
+    }
+    .action-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--text-main); }
+
+    /* 信息流卡片 */
+    .meal-item .meal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .avatars .avatar {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 34px;
+      height: 34px;
+      border: var(--border-w) solid var(--text-main);
+      border-radius: 50% 40% 60% 50% / 50% 60% 40% 50%;
+      font-size: 14px;
+      font-weight: bold;
+      margin-left: -10px;
+      box-shadow: 1px 1px 0px var(--text-main);
+    }
+    .avatars .avatar:first-child { margin-left: 0; }
+    .meal-meta { text-align: right; font-size: 14px; font-weight: bold; }
+    .meal-meta div { margin-bottom: 4px; }
+
+    .meal-tags { margin-bottom: 10px; }
+    .tag {
+      display: inline-block;
+      background: var(--c-blue);
+      border: 2px solid var(--text-main);
+      border-radius: 12px 6px 12px 6px / 6px 12px 6px 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .meal-topic {
+      font-size: 14px;
+      background: var(--bg-color);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1.5px dashed var(--text-main);
+      margin-bottom: 12px;
+    }
+    .join-btn { width: 100%; background: var(--c-yellow); }
+
+    /* 底部导航 */
+    .app-bottom-nav {
+      display: flex;
+      background: #fff;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      z-index: 10;
+    }
+    .nav-item {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 12px;
+      color: #888;
+      cursor: pointer;
+    }
+    .nav-item.active {
+      color: var(--text-main);
+      font-weight: bold;
+      background: var(--c-green);
+    }
+    .nav-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+    /* 悬浮按钮 */
+    .fab {
+      position: absolute;
+      right: 20px;
+      bottom: 75px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50% 45% 55% 40% / 40% 55% 45% 50%;
+      background: var(--c-orange);
+      border: var(--border-w) solid var(--text-main);
+      box-shadow: 3px 3px 0px var(--text-main);
+      font-size: 32px;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .fab:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px var(--text-main); }
+
+    /* ========== 弹窗与表单 ========== */
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(92, 85, 82, 0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-content {
+      width: 100%;
+      max-height: 85%;
+      overflow-y: auto;
+      background: var(--bg-color);
+      padding: 20px;
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 15px; right: 15px;
+      background: none; border: none;
+      font-size: 24px; cursor: pointer; color: var(--text-main);
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 15px; }
+
+    .hand-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: var(--border-w) solid var(--text-main);
+      border-radius: 10px 15px 10px 15px / 15px 10px 15px 10px;
+      background: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      outline: none;
+      color: var(--text-main);
+    }
+    .hand-input:focus { box-shadow: 2px 2px 0px var(--c-pink); }
+
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      padding: 6px 14px;
+      border: 2px solid var(--text-main);
+      border-radius: 20px 10px 20px 10px / 10px 20px 10px 20px;
+      font-size: 14px;
+      background: #fff;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pill.active {
+      background: var(--c-yellow);
+      box-shadow: 2px 2px 0px var(--text-main);
+      transform: translate(-1px, -1px);
+    }
+
+    .stepper { display: flex; align-items: center; gap: 16px; }
+    .hand-btn-sm {
+      width: 36px; height: 36px;
+      border: 2px solid var(--text-main);
+      border-radius: 50% 40% 50% 40% / 40% 50% 40% 50%;
+      background: var(--c-blue);
+      font-size: 20px; font-weight: bold;
+      cursor: pointer;
+    }
+    .stepper span { font-size: 20px; font-weight: bold; width: 20px; text-align: center; }
+
+    .radio-group { display: flex; flex-direction: column; gap: 10px; }
+    .hand-radio {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 15px; font-weight: bold; cursor: pointer;
+    }
+    .hand-radio input { width: 18px; height: 18px; accent-color: var(--text-main); }
+
+    .submit-btn { width: 100%; background: var(--c-green); margin-top: 10px; font-size: 18px; }
+
+    /* 匹配中动画 */
+    #matching-modal .modal-content {
+      background: var(--c-purple);
+      text-align: center;
+      font-size: 20px; font-weight: bold;
+      box-shadow: 6px 6px 0px var(--text-main);
+    }
+    .spinner {
+      font-size: 50px;
+      margin-bottom: 16px;
+      display: inline-block;
+      animation: roll 1s infinite linear;
+    }
+    @keyframes roll { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* 消息提醒卡片 */
+    .reminder-item { background: var(--c-yellow); }
+    .rem-time { font-weight: bold; font-size: 16px; margin-bottom: 6px; }
+    .rem-desc { font-size: 14px; margin-bottom: 6px; }
+    .rem-action { font-size: 13px; color: #7A726E; }
+
+    /* Toast */
+    .toast {
+      position: absolute;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-main);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+  </style>
+</head>
+<body>
+
+<div class="phone-mockup">
+  <!-- 顶部栏 -->
+  <header class="app-header hand-border-bottom">
+    <div class="logo">🍚 饭团局</div>
+    <div class="header-actions">✨</div>
+  </header>
+
+  <!-- 主体内容 -->
+  <main class="app-content">
+
+    <!-- 发现 Tab -->
+    <section id="tab-discover" class="tab-pane active">
+      <div class="quick-actions">
+        <div class="action-btn hand-card" style="background: var(--c-blue)" onclick="startMatch('random')">
+          🎲<br>随机匹配
+        </div>
+        <div class="action-btn hand-card" style="background: var(--c-yellow)" onclick="startMatch('cross')">
+          🤝<br>跨部门组局
+        </div>
+      </div>
+
+      <h3 class="pane-title">🔥 附近的饭局</h3>
+      <div class="meal-list" id="meal-list">
+        <!-- 初始示例卡片 -->
+        <div class="hand-card meal-item">
+          <div class="meal-header">
+            <div class="avatars">
+              <span class="avatar" style="background:var(--c-green)">张</span>
+              <span class="avatar" style="background:var(--c-pink)">李</span>
+              <span class="avatar" style="background:var(--c-purple)">王</span>
+            </div>
+            <div class="meal-meta">
+              <div>🕛 12:00</div>
+              <div>📍 3F美食街</div>
+            </div>
+          </div>
+          <div class="meal-tags">
+            <span class="tag" style="background:var(--c-blue)">#技术&产品</span>
+            <span class="tag" style="background:var(--c-pink)">#跨部门</span>
+          </div>
+          <div class="meal-topic">
+            💬 话题：周末去哪玩，求推荐！
+          </div>
+          <button class="hand-btn join-btn" data-topic="周末去哪玩" onclick="joinMeal(this)">加我一个！</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 消息 Tab -->
+    <section id="tab-message" class="tab-pane">
+      <h3 class="pane-title">🔔 饭局提醒</h3>
+      <div class="reminder-list" id="reminder-list">
+        <div class="hand-card reminder-item" style="background: var(--c-green)">
+          <div class="rem-time">⏰ 明天 12:00</div>
+          <div class="rem-desc">与 <b>张三(研发)</b>、<b>李四(市场)</b> 约饭</div>
+          <div class="rem-action">饭点见！记得带好胃口 🍴</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 我的 Tab -->
+    <section id="tab-profile" class="tab-pane">
+      <h3 class="pane-title">👤 我的饭搭子</h3>
+      <div class="hand-card" style="text-align: center; background: var(--c-orange);">
+        <div style="font-size: 40px; margin-bottom: 10px;">🧑‍💻</div>
+        <div style="font-weight: bold; font-size: 18px;">同学小李 (产品部)</div>
+        <div style="margin-top: 8px; font-size: 14px;">已组局 3 次 | 跨部门交友 5 人</div>
+      </div>
+      <div class="hand-card" style="background: #fff;">
+        <p style="margin:0; font-size: 14px; line-height: 1.6;">
+          🎯 <b>核心目标：</b>打破部门墙，在干饭中轻松交流。<br>
+          💡 <b>小贴士：</b>多使用"跨部门组局"功能，认识不一样的小伙伴！
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部导航 -->
+  <nav class="app-bottom-nav hand-border-top">
+    <div class="nav-item active" onclick="switchTab('discover', this)">
+      <span class="nav-icon">🍱</span>发现
+    </div>
+    <div class="nav-item" onclick="switchTab('message', this)">
+      <span class="nav-icon">🔔</span>消息
+    </div>
+    <div class="nav-item" onclick="switchTab('profile', this)">
+      <span class="nav-icon">👤</span>我的
+    </div>
+  </nav>
+
+  <!-- 悬浮发起按钮 -->
+  <button class="fab" onclick="openModal()">＋</button>
+
+  <!-- 匹配中遮罩 -->
+  <div class="modal-overlay" id="matching-modal">
+    <div class="modal-content hand-card">
+      <div class="spinner">🎲</div>
+      <div>正在为你寻找饭搭子...</div>
+    </div>
+  </div>
+
+  <!-- 发起约饭弹窗 -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal-content hand-card">
+      <button class="close-btn" onclick="closeModal()">✕</button>
+      <h3 style="margin-top:0; text-align:center;">🍱 组个饭局吧</h3>
+
+      <div class="form-group">
+        <label>🕛 用餐时间</label>
+        <input type="time" class="hand-input" id="f-time" value="12:00">
+      </div>
+
+      <div class="form-group">
+        <label>📍 食堂地点</label>
+        <div class="pill-group" id="f-loc">
+          <span class="pill active" onclick="togglePill(this, true)">1F大食堂</span>
+          <span class="pill" onclick="togglePill(this, true)">2F轻食</span>
+          <span class="pill" onclick="togglePill(this, true)">3F美食街</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>👥 人数偏好 (含自己)</label>
+        <div class="stepper">
+          <button class="hand-btn-sm" onclick="stepNum(-1)">-</button>
+          <span id="f-num">4</span>
+          <button class="hand-btn-sm" onclick="stepNum(1)">+</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>🎯 匹配模式</label>
+        <div class="radio-group">
+          <label class="hand-radio"><input type="radio" name="mode" value="random" checked> 🎲 随机匹配</label>
+          <label class="hand-radio"><input type="radio" name="mode" value="cross"> 🤝 仅跨部门组局</label>
+          <label class="hand-radio"><input type="radio" name="mode" value="interest"> 💡 兴趣优先</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>🏷️ 兴趣标签 (可多选)</label>
+        <div class="pill-group" id="f-tags">
+          <span class="pill" onclick="togglePill(this, false)">🎮 游戏</span>
+          <span class="pill" onclick="togglePill(this, false)">☕ 摸鱼</span>
+          <span class="pill" onclick="togglePill(this, false)">🏋️ 健身</span>
+          <span class="pill" onclick="togglePill(this, false)">🍻 干饭</span>
+          <span class="pill" onclick="togglePill(this, false)">📖 读书</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>💬 话题小组</label>
+        <input type="text" class="hand-input" id="f-topic" placeholder="今天聊点啥？如：新人答疑">
+      </div>
+
+      <button class="hand-btn submit-btn" onclick="submitMeal()">确认并发起 🚀</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">提示</div>
+
+</div>
+
+<script>
+  // Tab 切换
+  function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // 弹窗控制
+  function openModal() { document.getElementById('create-modal').style.display = 'flex'; }
+  function closeModal() { document.getElementById('create-modal').style.display = 'none'; }
+
+  // 胶囊按钮切换 (isSingle=true为单选，false为多选)
+  function togglePill(el, isSingle) {
+    if (isSingle) {
+      const parent = el.parentElement;
+      parent.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+    } else {
+      el.classList.toggle('active');
+    }
+  }
+
+  // 人数步进器
+  let currentNum = 4;
+  function stepNum(delta) {
+    currentNum += delta;
+    if (currentNum < 2) currentNum = 2;
+    if (currentNum > 8) currentNum = 8;
+    document.getElementById('f-num').innerText = currentNum;
+  }
+
+  // 随机/跨部门快捷匹配动画
+  function startMatch(type) {
+    const modal = document.getElementById('matching-modal');
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      modal.style.display = 'none';
+      openModal();
+      if(type === 'random') {
+        document.querySelector('input[value="random"]').checked = true;
+      } else if (type === 'cross') {
+        document.querySelector('input[value="cross"]').checked = true;
+      }
+    }, 1500);
+  }
+
+  // 提交组局
+  function submitMeal() {
+    const time = document.getElementById('f-time').value;
+    const loc = document.querySelector('#f-loc .pill.active').innerText;
+    const num = document.getElementById('f-num').innerText;
+    const mode = document.querySelector('input[name="mode"]:checked').nextSibling.textContent.trim();
+    const topic = document.getElementById('f-topic').value || '随便聊聊~';
+    const tags = Array.from(document.querySelectorAll('#f-tags .pill.active')).map(t => '#' + t.innerText.split(' ')[1]).join(' ');
+
+    // 生成新饭局卡片
+    const list = document.getElementById('meal-list');
+    const card = document.createElement('div');
+    card.className = 'hand-card meal-item';
+    card.innerHTML = `
+      <div class="meal-header">
+        <div class="avatars">
+          <span class="avatar" style="background:var(--c-orange)">我</span>
+          <span class="avatar" style="background:var(--c-purple)">?</span>
+        </div>
+        <div class="meal-meta">
+          <div>🕛 ${time}</div>
+          <div>📍 ${loc}</div>
+        </div>
+      </div>
+      <div class="meal-tags">
+        <span class="tag" style="background:var(--c-yellow)">#${mode}</span>
+        ${tags ? `<span class="tag" style="background:var(--c-blue)">${tags}</span>` : ''}
+      </div>
+      <div class="meal-topic">💬 话题：${topic}</div>
+      <button class="hand-btn join-btn" style="background:var(--c-green)" disabled>已发起 (${num}人局)</button>
+    `;
+    list.prepend(card);
+
+    // 加入消息提醒
+    const remList = document.getElementById('reminder-list');
+    const rem = document.createElement('div');
+    rem.className = 'hand-card reminder-item';
+    rem.style.background = 'var(--c-yellow)';
+    rem.innerHTML = `
+      <div class="rem-time">⏰ ${time} 即将开始</div>
+      <div class="rem-desc">你发起了 <b>${loc} ${num}人局</b></div>
+      <div class="rem-action">模式：${mode} | 准备好去干饭啦！🍴</div>
+    `;
+    remList.prepend(rem);
+
+    closeModal();
+    showToast('组局成功！已为你推送提醒 🎉');
+  }
+
+  // 报名加入
+  function joinMeal(btn) {
+    if(btn.innerText.includes('已报名')) return;
+    btn.innerText = '已报名 ✓';
+    btn.style.background = 'var(--c-green)';
+    btn.disabled = true;
+
+    const topic = btn.dataset.topic || '神秘饭局';
+    const remList = document.getElementById('reminder-list');
+    const rem = document.createElement('div');
+    rem.className = 'hand-card reminder-item';
+    rem.style.background = 'var(--c-pink)';
+    rem.innerHTML = `
+      <div class="rem-time">⏰ 即将开始</div>
+      <div class="rem-desc">你报名了话题：<b>${topic}</b></div>
+      <div class="rem-action">饭点见！记得带好胃口 🍴</div>
+    `;
+    remList.prepend(rem);
+    showToast('报名成功！已加入饭局提醒 🎉');
+  }
+
+  // Toast 提示
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.style.opacity = '1';
+    setTimeout(() => { t.style.opacity = '0'; }, 2000);
+  }
+</script>
+</body>
+</html>
