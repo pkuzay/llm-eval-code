@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>iOS 18 Weather Card</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  overflow: hidden;
+}
+
+/* 背景光晕 */
+.bg-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.4;
+  transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.bg-glow.g1 { top: -200px; left: -200px; }
+.bg-glow.g2 { bottom: -200px; right: -200px; }
+
+body[data-weather="sunny"] .bg-glow.g1 { background: #ff9500; }
+body[data-weather="sunny"] .bg-glow.g2 { background: #ffcc00; }
+body[data-weather="windy"] .bg-glow.g1 { background: #5e7a99; }
+body[data-weather="windy"] .bg-glow.g2 { background: #8aa5c2; }
+body[data-weather="rainy"] .bg-glow.g1 { background: #3d4a7a; }
+body[data-weather="rainy"] .bg-glow.g2 { background: #6b5b95; }
+body[data-weather="snowy"] .bg-glow.g1 { background: #7a9bc2; }
+body[data-weather="snowy"] .bg-glow.g2 { background: #b8d4e8; }
+
+/* 主卡片 */
+.card {
+  position: relative;
+  width: 400px;
+  height: 640px;
+  border-radius: 40px;
+  background: linear-gradient(160deg, rgba(40, 45, 65, 0.6), rgba(20, 22, 35, 0.8));
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 1px 0 rgba(255, 255, 255, 0.1) inset;
+  overflow: hidden;
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 动态背景渐变层 */
+.weather-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+.weather-bg.active { opacity: 1; }
+
+.bg-sunny {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 180, 80, 0.35), transparent 50%),
+    radial-gradient(circle at 30% 80%, rgba(255, 120, 50, 0.15), transparent 60%);
+}
+.bg-windy {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(140, 170, 200, 0.25), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(90, 120, 160, 0.2), transparent 60%);
+}
+.bg-rainy {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(100, 80, 150, 0.3), transparent 60%),
+    radial-gradient(circle at 50% 90%, rgba(50, 60, 100, 0.25), transparent 50%);
+}
+.bg-snowy {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(180, 210, 240, 0.25), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(220, 235, 250, 0.2), transparent 50%);
+}
+
+/* 内容 */
+.content {
+  position: relative;
+  height: 100%;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+/* 顶部信息 */
+.top-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  color: rgba(255, 255, 255, 0.9);
+}
+.location {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.date {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.menu-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.menu-btn::before {
+  content: '';
+  width: 14px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 5px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* 天气动画区 */
+.weather-stage {
+  flex: 1;
+  position: relative;
+  margin: 20px 0;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+/* 晴天 - 太阳 */
+.sun-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.sun-container.active { opacity: 1; }
+
+.sun {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff4c2 0%, #ffcc66 40%, #ff9500 80%);
+  box-shadow:
+    0 0 60px rgba(255, 180, 80, 0.8),
+    0 0 120px rgba(255, 150, 50, 0.4),
+    inset 0 0 30px rgba(255, 255, 200, 0.5);
+  animation: sunPulse 4s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes sunPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(255, 180, 80, 0.8), 0 0 120px rgba(255, 150, 50, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 80px rgba(255, 180, 80, 1), 0 0 160px rgba(255, 150, 50, 0.6); }
+}
+
+.sun-rays {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  animation: rotate 30s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sun-rays::before, .sun-rays::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 200, 100, 0.3) 10deg,
+    transparent 20deg,
+    transparent 45deg,
+    rgba(255, 200, 100, 0.3) 55deg,
+    transparent 65deg,
+    transparent 90deg,
+    rgba(255, 200, 100, 0.3) 100deg,
+    transparent 110deg,
+    transparent 135deg,
+    rgba(255, 200, 100, 0.3) 145deg,
+    transparent 155deg,
+    transparent 180deg,
+    rgba(255, 200, 100, 0.3) 190deg,
+    transparent 200deg,
+    transparent 225deg,
+    rgba(255, 200, 100, 0.3) 235deg,
+    transparent 245deg,
+    transparent 270deg,
+    rgba(255, 200, 100, 0.3) 280deg,
+    transparent 290deg,
+    transparent 315deg,
+    rgba(255, 200, 100, 0.3) 325deg,
+    transparent 335deg
+  );
+  border-radius: 50%;
+  filter: blur(8px);
+}
+.sun-rays::after {
+  animation: rotate 20s linear infinite reverse;
+  opacity: 0.6;
+}
+
+/* 光晕粒子 */
+.halo {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 220, 150, 0.8);
+  filter: blur(2px);
+  animation: floatHalo 6s ease-in-out infinite;
+}
+@keyframes floatHalo {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50% { transform: translate(20px, -30px) scale(1.3); opacity: 1; }
+}
+
+/* 大风 */
+.wind-container {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.wind-container.active { opacity: 1; }
+
+.cloud {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(200, 210, 225, 0.7));
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+.cloud::before, .cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+.cloud-1 {
+  width: 100px;
+  height: 32px;
+  top: 25%;
+  left: -100px;
+  animation: cloudMove 8s linear infinite;
+}
+.cloud-1::before { width: 50px; height: 50px; top: -25px; left: 15px; }
+.cloud-1::after { width: 35px; height: 35px; top: -15px; left: 55px; }
+
+.cloud-2 {
+  width: 80px;
+  height: 26px;
+  top: 55%;
+  left: -80px;
+  animation: cloudMove 10s linear infinite 2s;
+  opacity: 0.8;
+}
+.cloud-2::before { width: 40px; height: 40px; top: -20px; left: 12px; }
+.cloud-2::after { width: 28px; height: 28px; top: -12px; left: 45px; }
+
+.cloud-3 {
+  width: 120px;
+  height: 36px;
+  top: 75%;
+  left: -120px;
+  animation: cloudMove 12s linear infinite 4s;
+  opacity: 0.6;
+}
+.cloud-3::before { width: 55px; height: 55px; top: -28px; left: 20px; }
+.cloud-3::after { width: 40px; height: 40px; top: -18px; left: 65px; }
+
+@keyframes cloudMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(550px); }
+}
+
+/* 风线 */
+.wind-line {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  border-radius: 2px;
+  animation: windFlow 2s linear infinite;
+}
+@keyframes windFlow {
+  0% { transform: translateX(-100px) scaleX(0.3); opacity: 0; }
+  50% { opacity: 1; transform: translateX(150px) scaleX(1); }
+  100% { transform: translateX(400px) scaleX(0.3); opacity: 0; }
+}
+
+/* 树 */
+.tree {
+  position: absolute;
+  bottom: 15%;
+  right: 15%;
+  width: 40px;
+  height: 60px;
+}
+.tree-trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 25px;
+  background: linear-gradient(180deg, #6b4a2b, #4a3220);
+  border-radius: 2px;
+  transform-origin: bottom center;
+  animation: treeSway 2s ease-in-out infinite;
+}
+.tree-top {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle at 30% 30%, #6b9b5a, #3d6b2e);
+  border-radius: 50%;
+  transform-origin: bottom center;
+  animation: treeSway 2s ease-in-out infinite;
+}
+@keyframes treeSway {
+  0%, 100% { transform: translateX(-50%) rotate(-8deg); }
+  50% { transform: translateX(-50%) rotate(8deg); }
+}
+
+/* 暴雨 */
+.rain-container {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.rain-container.active { opacity: 1; }
+
+.raindrop {
+  position: absolute;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(150, 200, 255, 0.8));
+  border-radius: 2px;
+  animation: rainFall linear infinite;
+}
+@keyframes rainFall {
+  0% { transform: translateY(-50px); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(450px); opacity: 0; }
+}
+
+/* 闪电 */
+.lightning {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 120px;
+  opacity: 0;
+  animation: lightningFlash 5s ease-in-out infinite;
+}
+.lightning path {
+  fill: rgba(255, 255, 220, 0.95);
+  filter: drop-shadow(0 0 20px rgba(255, 255, 200, 0.8));
+}
+@keyframes lightningFlash {
+  0%, 92%, 100% { opacity: 0; }
+  93%, 95% { opacity: 1; }
+  94% { opacity: 0.3; }
+}
+
+/* 水洼 */
+.puddle {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 30px;
+  background: radial-gradient(ellipse, rgba(100, 150, 220, 0.4), transparent 70%);
+  border-radius: 50%;
+  animation: puddleRipple 2s ease-out infinite;
+}
+@keyframes puddleRipple {
+  0% { transform: translateX(-50%) scale(0.8); opacity: 0.8; }
+  100% { transform: translateX(-50%) scale(1.2); opacity: 0; }
+}
+
+.ripple {
+  position: absolute;
+  bottom: 10%;
+  border: 1px solid rgba(150, 200, 255, 0.6);
+  border-radius: 50%;
+  animation: rippleExpand 1.5s ease-out infinite;
+}
+@keyframes rippleExpand {
+  0% { width: 0; height: 0; opacity: 1; }
+  100% { width: 40px; height: 10px; opacity: 0; }
+}
+
+/* 暴雪 */
+.snow-container {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.snow-container.active { opacity: 1; }
+
+.snowflake {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  animation: snowFall linear infinite;
+  text-shadow: 0 0 8px rgba(200, 230, 255, 0.8);
+}
+@keyframes snowFall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(450px) rotate(360deg); opacity: 0.5; }
+}
+
+/* 雪堆 */
+.snow-pile {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, rgba(230, 240, 250, 0.9), rgba(200, 220, 240, 0.7));
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  box-shadow: 0 -4px 20px rgba(200, 220, 240, 0.3);
+}
+.snow-pile::before {
+  content: '';
+  position: absolute;
+  bottom: 40px;
+  left: 20%;
+  width: 80px;
+  height: 40px;
+  background: linear-gradient(180deg, rgba(240, 248, 255, 0.95), rgba(210, 225, 240, 0.8));
+  border-radius: 50%;
+}
+.snow-pile::after {
+  content: '';
+  position: absolute;
+  bottom: 30px;
+  right: 15%;
+  width: 100px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(240, 248, 255, 0.95), rgba(210, 225, 240, 0.8));
+  border-radius: 50%;
+}
+
+/* 温度显示 */
+.temp-section {
+  color: white;
+  margin-top: auto;
+}
+.temp-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.temp-value {
+  font-size: 88px;
+  font-weight: 200;
+  letter-spacing: -4px;
+  line-height: 1;
+  background: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.7));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: all 0.6s ease;
+}
+.temp-unit {
+  font-size: 36px;
+  font-weight: 300;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.condition {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 4px;
+  transition: all 0.5s ease;
+}
+.temp-range {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+/* 详情条 */
+.details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.detail-item {
+  text-align: center;
+  color: white;
+  flex: 1;
+}
+.detail-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.detail-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 切换按钮 */
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ctrl-btn {
+  flex: 1;
+  padding: 10px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+.ctrl-btn .icon {
+  font-size: 18px;
+}
+.ctrl-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+.ctrl-btn.active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+  color: white;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+</style>
+</head>
+<body data-weather="sunny">
+
+<div class="bg-glow g1"></div>
+<div class="bg-glow g2"></div>
+
+<div class="card">
+  <!-- 动态背景 -->
+  <div class="weather-bg bg-sunny active"></div>
+  <div class="weather-bg bg-windy"></div>
+  <div class="weather-bg bg-rainy"></div>
+  <div class="weather-bg bg-snowy"></div>
+
+  <div class="content">
+    <!-- 顶部 -->
+    <div class="top-info">
+      <div>
+        <div class="location">上海市</div>
+        <div class="date">星期三 · 7月8日</div>
+      </div>
+      <div class="menu-btn"></div>
+    </div>
+
+    <!-- 天气动画舞台 -->
+    <div class="weather-stage">
+      <!-- 晴天 -->
+      <div class="sun-container active">
+        <div class="sun-rays"></div>
+        <div class="sun"></div>
+      </div>
+
+      <!-- 大风 -->
+      <div class="wind-container">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+        <div class="tree">
+          <div class="tree-top"></div>
+          <div class="tree-trunk"></div>
+        </div>
+      </div>
+
+      <!-- 暴雨 -->
+      <div class="rain-container">
+        <svg class="lightning" viewBox="0 0 60 120">
+          <path d="M30 0 L10 60 L25 60 L15 120 L50 50 L32 50 L45 0 Z"/>
+        </svg>
+        <div class="puddle"></div>
+      </div>
+
+      <!-- 暴雪 -->
+      <div class="snow-container">
+        <div class="snow-pile"></div>
+      </div>
+    </div>
+
+    <!-- 温度 -->
+    <div class="temp-section">
+      <div class="temp-main">
+        <div class="temp-value" id="tempValue">28</div>
+        <div class="temp-unit">°</div>
+      </div>
+      <div class="condition" id="condition">晴朗</div>
+      <div class="temp-range" id="tempRange">最高 32° · 最低 24°</div>
+
+      <div class="details">
+        <div class="detail-item">
+          <div class="detail-label">体感</div>
+          <div class="detail-value" id="feelsLike">30°</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">湿度</div>
+          <div class="detail-value" id="humidity">55%</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">风速</div>
+          <div class="detail-value" id="wind">8 km/h</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">紫外线</div>
+          <div class="detail-value" id="uv">强</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl-btn active" data-type="sunny">
+          <span class="icon">☀️</span>
+          <span>晴天</span>
+        </button>
+        <button class="ctrl-btn" data-type="windy">
+          <span class="icon">💨</span>
+          <span>大风</span>
+        </button>
+        <button class="ctrl-btn" data-type="rainy">
+          <span class="icon">🌧️</span>
+          <span>暴雨</span>
+        </button>
+        <button class="ctrl-btn" data-type="snowy">
+          <span class="icon">❄️</span>
+          <span>暴雪</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 天气数据
+const weatherData = {
+  sunny: { temp: 28, condition: '晴朗', range: '最高 32° · 最低 24°', feels: '30°', humidity: '55%', wind: '8 km/h', uv: '强' },
+  windy: { temp: 18, condition: '大风', range: '最高 20° · 最低 14°', feels: '15°', humidity: '62%', wind: '35 km/h', uv: '中' },
+  rainy: { temp: 14, condition: '暴雨', range: '最高 16° · 最低 12°', feels: '12°', humidity: '92%', wind: '22 km/h', uv: '弱' },
+  snowy: { temp: -5, condition: '暴雪', range: '最高 -2° · 最低 -8°', feels: '-10°', humidity: '78%', wind: '15 km/h', uv: '弱' }
+};
+
+// 动态生成雨滴
+function createRaindrops() {
+  const container = document.querySelector('.rain-container');
+  for (let i = 0; i < 80; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'raindrop';
+    drop.style.left = Math.random() * 100 + '%';
+    drop.style.height = (15 + Math.random() * 20) + 'px';
+    drop.style.animationDuration = (0.4 + Math.random() * 0.4) + 's';
+    drop.style.animationDelay = Math.random() * 2 + 's';
+    drop.style.opacity = 0.4 + Math.random() * 0.6;
+    container.appendChild(drop);
+  }
+  // 涟漪
+  for (let i = 0; i < 5; i++) {
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    ripple.style.left = (20 + Math.random() * 60) + '%';
+    ripple.style.animationDelay = Math.random() * 1.5 + 's';
+    container.appendChild(ripple);
+  }
+}
+
+// 动态生成雪花
+function createSnowflakes() {
+  const container = document.querySelector('.snow-container');
+  const flakes = ['❄', '❅', '❆', '✦'];
+  for (let i = 0; i < 50; i++) {
+    const flake = document.createElement('div');
+    flake.className = 'snowflake';
+    flake.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+    flake.style.left = Math.random() * 100 + '%';
+    flake.style.fontSize = (10 + Math.random() * 14) + 'px';
+    flake.style.animationDuration = (4 + Math.random() * 4) + 's';
+    flake.style.animationDelay = Math.random() * 5 + 's';
+    flake.style.opacity = 0.5 + Math.random() * 0.5;
+    container.appendChild(flake);
+  }
+}
+
+// 生成风线
+function createWindLines() {
+  const container = document.querySelector('.wind-container');
+  for (let i = 0; i < 8; i++) {
+    const line = document.createElement('div');
+    line.className = 'wind-line';
+    line.style.top = (15 + Math.random() * 70) + '%';
+    line.style.width = (60 + Math.random() * 80) + 'px';
+    line.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+    line.style.animationDelay = Math.random() * 2 + 's';
+    container.appendChild(line);
+  }
+}
+
+// 生成光晕粒子
+function createHalos() {
+  const container = document.querySelector('.sun-container');
+  for (let i = 0; i < 8; i++) {
+    const halo = document.createElement('div');
+    halo.className = 'halo';
+    halo.style.top = (20 + Math.random() * 60) + '%';
+    halo.style.left = (20 + Math.random() * 60) + '%';
+    halo.style.animationDelay = Math.random() * 6 + 's';
+    halo.style.animationDuration = (5 + Math.random() * 3) + 's';
+    container.appendChild(halo);
+  }
+}
+
+// 初始化
+createRaindrops();
+createSnowflakes();
+createWindLines();
+createHalos();
+
+// 切换天气
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.type;
+
+    // 更新按钮状态
+    document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // 更新背景
+    document.body.dataset.weather = type;
+    document.querySelectorAll('.weather-bg').forEach(bg => bg.classList.remove('active'));
+    document.querySelector('.bg-' + type).classList.add('active');
+
+    // 更新动画容器
+    const containers = {
+      sunny: '.sun-container',
+      windy: '.wind-container',
+      rainy: '.rain-container',
+      snowy: '.snow-container'
+    };
+    document.querySelectorAll('.sun-container, .wind-container, .rain-container, .snow-container')
+      .forEach(c => c.classList.remove('active'));
+    document.querySelector(containers[type]).classList.add('active');
+
+    // 更新数据（带数字动画）
+    const data = weatherData[type];
+    animateValue('tempValue', parseInt(document.getElementById('tempValue').textContent), data.temp, 600);
+    document.getElementById('condition').textContent = data.condition;
+    document.getElementById('tempRange').textContent = data.range;
+    document.getElementById('feelsLike').textContent = data.feels;
+    document.getElementById('humidity').textContent = data.humidity;
+    document.getElementById('wind').textContent = data.wind;
+    document.getElementById('uv').textContent = data.uv;
+  });
+});
+
+// 数字动画
+function animateValue(id, start, end, duration) {
+  const el = document.getElementById(id);
+  const range = end - start;
+  const startTime = performance.now();
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    const current = Math.round(start + range * eased);
+    el.textContent = current;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+</script>
+
+</body>
+</html>
