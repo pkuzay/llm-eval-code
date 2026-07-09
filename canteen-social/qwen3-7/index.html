@@ -1,1949 +1,824 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>饭搭子 - 公司食堂约饭小程序</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
-
-        :root {
-            --mint: #B8E6D5;
-            --peach: #FFD4C4;
-            --lavender: #D4C5F9;
-            --yellow: #FFF5CC;
-            --pink: #FFD6E0;
-            --cream: #FFF9F0;
-            --text: #5A4A3A;
-            --text-light: #8B7B6B;
-            --border: #E8DDD0;
-            --shadow: rgba(90, 74, 58, 0.08);
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--cream);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Hand-drawn border effect */
-        .hand-drawn {
-            border: 2.5px solid var(--border);
-            border-radius: 20px;
-            position: relative;
-        }
-
-        .hand-drawn::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: -1px;
-            right: -1px;
-            bottom: -1px;
-            border: 1.5px solid var(--border);
-            border-radius: 22px;
-            opacity: 0.5;
-            transform: rotate(0.3deg);
-        }
-
-        /* Phone frame */
-        .phone-frame {
-            max-width: 420px;
-            margin: 0 auto;
-            min-height: 100vh;
-            background: var(--cream);
-            position: relative;
-            padding-bottom: 80px;
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--mint) 0%, var(--peach) 100%);
-            padding: 20px 20px 30px;
-            border-radius: 0 0 30px 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            right: 0;
-            height: 10px;
-            background: var(--cream);
-            border-radius: 50% 50% 0 0;
-        }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            box-shadow: 2px 2px 0 var(--border);
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .header-btn {
-            width: 36px;
-            height: 36px;
-            background: rgba(255,255,255,0.7);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.9);
-            transition: transform 0.2s;
-        }
-
-        .header-btn:hover {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        .greeting {
-            color: var(--text);
-            font-size: 14px;
-            opacity: 0.8;
-        }
-
-        .greeting-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-
-        /* Floating decorations */
-        .deco {
-            position: absolute;
-            opacity: 0.3;
-            font-size: 24px;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .deco-1 { top: 15px; right: 80px; animation-delay: 0s; }
-        .deco-2 { top: 40px; right: 120px; animation-delay: 1s; }
-        .deco-3 { bottom: 20px; left: 20px; animation-delay: 0.5s; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-5px) rotate(5deg); }
-        }
-
-        /* Main content */
-        .content {
-            padding: 15px;
-        }
-
-        /* Quick action cards */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .quick-action {
-            background: white;
-            border-radius: 16px;
-            padding: 15px 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-            position: relative;
-        }
-
-        .quick-action:hover {
-            transform: translateY(-3px);
-            border-color: var(--mint);
-            box-shadow: 0 4px 12px var(--shadow);
-        }
-
-        .quick-action-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            margin: 0 auto 8px;
-        }
-
-        .quick-action:nth-child(1) .quick-action-icon { background: var(--mint); }
-        .quick-action:nth-child(2) .quick-action-icon { background: var(--peach); }
-        .quick-action:nth-child(3) .quick-action-icon { background: var(--lavender); }
-        .quick-action:nth-child(4) .quick-action-icon { background: var(--pink); }
-
-        .quick-action-text {
-            font-size: 12px;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-
-        /* Section */
-        .section {
-            margin-bottom: 20px;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .section-more {
-            font-size: 12px;
-            color: var(--text-light);
-            cursor: pointer;
-            padding: 4px 10px;
-            background: white;
-            border-radius: 12px;
-            border: 1.5px solid var(--border);
-        }
-
-        /* Meal cards */
-        .meal-card {
-            background: white;
-            border-radius: 18px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border: 2px solid var(--border);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .meal-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px var(--shadow);
-        }
-
-        .meal-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            border-radius: 4px 0 0 4px;
-        }
-
-        .meal-card.mint::before { background: var(--mint); }
-        .meal-card.peach::before { background: var(--peach); }
-        .meal-card.lavender::before { background: var(--lavender); }
-        .meal-card.pink::before { background: var(--pink); }
-
-        .meal-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-
-        .meal-info {
-            flex: 1;
-        }
-
-        .meal-title {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        .meal-meta {
-            display: flex;
-            gap: 12px;
-            font-size: 12px;
-            color: var(--text-light);
-        }
-
-        .meal-meta span {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-
-        .meal-status {
-            padding: 4px 10px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .status-open {
-            background: var(--mint);
-            color: #2D8B6F;
-        }
-
-        .status-full {
-            background: var(--peach);
-            color: #C47A5A;
-        }
-
-        .status-soon {
-            background: var(--yellow);
-            color: #B8960A;
-        }
-
-        .meal-avatars {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid white;
-            margin-left: -8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: white;
-            font-weight: bold;
-        }
-
-        .avatar:first-child { margin-left: 0; }
-        .avatar-1 { background: #7BC8A4; }
-        .avatar-2 { background: #F4A683; }
-        .avatar-3 { background: #A78BDB; }
-        .avatar-4 { background: #F0A0B0; }
-        .avatar-more {
-            background: var(--border);
-            color: var(--text-light);
-            font-size: 10px;
-        }
-
-        .meal-tags {
-            display: flex;
-            gap: 6px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-
-        .tag {
-            padding: 3px 8px;
-            border-radius: 8px;
-            font-size: 11px;
-            background: var(--cream);
-            color: var(--text-light);
-            border: 1px solid var(--border);
-        }
-
-        .tag-dept {
-            background: var(--lavender);
-            color: #6B5BA7;
-            border-color: transparent;
-        }
-
-        /* Bottom nav */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 420px;
-            background: white;
-            border-top: 2px solid var(--border);
-            border-radius: 20px 20px 0 0;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-around;
-            z-index: 100;
-            box-shadow: 0 -4px 20px var(--shadow);
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            padding: 5px 12px;
-            border-radius: 12px;
-            transition: all 0.3s;
-        }
-
-        .nav-item.active {
-            background: var(--mint);
-        }
-
-        .nav-item:hover {
-            background: var(--cream);
-        }
-
-        .nav-icon {
-            font-size: 20px;
-        }
-
-        .nav-text {
-            font-size: 10px;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-
-        .nav-item.active .nav-text {
-            color: #2D8B6F;
-            font-weight: bold;
-        }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(90, 74, 58, 0.4);
-            backdrop-filter: blur(4px);
-            z-index: 200;
-            display: none;
-            align-items: flex-end;
-            justify-content: center;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--cream);
-            border-radius: 24px 24px 0 0;
-            width: 100%;
-            max-width: 420px;
-            max-height: 85vh;
-            overflow-y: auto;
-            padding: 24px 20px 40px;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-
-        .modal-handle {
-            width: 40px;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            margin: 0 auto 20px;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        /* Form elements */
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-light);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--border);
-            border-radius: 14px;
-            font-size: 14px;
-            background: white;
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .form-input:focus {
-            border-color: var(--mint);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--border);
-            border-radius: 14px;
-            font-size: 14px;
-            background: white;
-            color: var(--text);
-            outline: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238B7B6B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-        }
-
-        /* Time selector */
-        .time-options {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .time-option {
-            padding: 12px 8px;
-            border: 2px solid var(--border);
-            border-radius: 14px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-        }
-
-        .time-option:hover, .time-option.selected {
-            border-color: var(--mint);
-            background: var(--mint);
-            color: #2D8B6F;
-        }
-
-        .time-option-icon {
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-
-        .time-option-text {
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .time-option-time {
-            font-size: 11px;
-            color: var(--text-light);
-            margin-top: 2px;
-        }
-
-        /* Location selector */
-        .location-options {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .location-option {
-            padding: 14px 12px;
-            border: 2px solid var(--border);
-            border-radius: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .location-option:hover, .location-option.selected {
-            border-color: var(--peach);
-            background: var(--peach);
-        }
-
-        .location-icon {
-            font-size: 24px;
-        }
-
-        .location-name {
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .location-desc {
-            font-size: 11px;
-            color: var(--text-light);
-        }
-
-        /* People count */
-        .people-selector {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: white;
-            padding: 12px 20px;
-            border-radius: 14px;
-            border: 2px solid var(--border);
-        }
-
-        .people-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid var(--border);
-            background: var(--cream);
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .people-btn:hover {
-            background: var(--mint);
-            border-color: var(--mint);
-        }
-
-        .people-count {
-            font-size: 24px;
-            font-weight: bold;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .people-label {
-            font-size: 12px;
-            color: var(--text-light);
-            margin-left: auto;
-        }
-
-        /* Interest tags */
-        .interest-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .interest-tag {
-            padding: 8px 14px;
-            border: 2px solid var(--border);
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .interest-tag:hover, .interest-tag.selected {
-            border-color: transparent;
-            transform: scale(1.05);
-        }
-
-        .interest-tag:nth-child(1).selected { background: var(--mint); }
-        .interest-tag:nth-child(2).selected { background: var(--peach); }
-        .interest-tag:nth-child(3).selected { background: var(--lavender); }
-        .interest-tag:nth-child(4).selected { background: var(--pink); }
-        .interest-tag:nth-child(5).selected { background: var(--yellow); }
-        .interest-tag:nth-child(6).selected { background: var(--mint); }
-        .interest-tag:nth-child(7).selected { background: var(--peach); }
-        .interest-tag:nth-child(8).selected { background: var(--lavender); }
-
-        /* Match button */
-        .match-btn {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 16px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            background: linear-gradient(135deg, #7BC8A4 0%, #5BB88A 100%);
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(91, 184, 138, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .match-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(91, 184, 138, 0.4);
-        }
-
-        .match-btn::after {
-            content: '✨';
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 18px;
-        }
-
-        /* Matching animation */
-        .matching-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 249, 240, 0.95);
-            z-index: 300;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-
-        .matching-overlay.active {
-            display: flex;
-        }
-
-        .matching-animation {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--mint), var(--peach));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 50px;
-            animation: pulse 1.5s ease-in-out infinite;
-            margin-bottom: 24px;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(123, 200, 164, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(123, 200, 164, 0); }
-        }
-
-        .matching-text {
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--text);
-            margin-bottom: 8px;
-        }
-
-        .matching-sub {
-            font-size: 14px;
-            color: var(--text-light);
-        }
-
-        .matching-dots::after {
-            content: '';
-            animation: dots 1.5s steps(4) infinite;
-        }
-
-        @keyframes dots {
-            0% { content: ''; }
-            25% { content: '.'; }
-            50% { content: '..'; }
-            75% { content: '...'; }
-        }
-
-        /* Success modal */
-        .success-content {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: var(--mint);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            margin: 0 auto 16px;
-            animation: bounceIn 0.5s ease;
-        }
-
-        @keyframes bounceIn {
-            0% { transform: scale(0); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-
-        .success-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .success-desc {
-            font-size: 14px;
-            color: var(--text-light);
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .match-result {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            border: 2px solid var(--border);
-            margin-bottom: 16px;
-            text-align: left;
-        }
-
-        .match-result-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .match-result-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--lavender), var(--pink));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        .match-result-info h4 {
-            font-size: 15px;
-            margin-bottom: 2px;
-        }
-
-        .match-result-info p {
-            font-size: 12px;
-            color: var(--text-light);
-        }
-
-        .match-detail {
-            display: flex;
-            justify-content: space-around;
-            padding-top: 12px;
-            border-top: 1.5px dashed var(--border);
-        }
-
-        .match-detail-item {
-            text-align: center;
-        }
-
-        .match-detail-item span {
-            display: block;
-            font-size: 11px;
-            color: var(--text-light);
-            margin-bottom: 2px;
-        }
-
-        .match-detail-item strong {
-            font-size: 13px;
-        }
-
-        /* Topic section */
-        .topic-cards {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .topic-card {
-            background: white;
-            border-radius: 16px;
-            padding: 14px;
-            border: 2px solid var(--border);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .topic-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--shadow);
-        }
-
-        .topic-card:nth-child(1) { border-left: 4px solid var(--mint); }
-        .topic-card:nth-child(2) { border-left: 4px solid var(--peach); }
-        .topic-card:nth-child(3) { border-left: 4px solid var(--lavender); }
-        .topic-card:nth-child(4) { border-left: 4px solid var(--pink); }
-
-        .topic-emoji {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .topic-name {
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        .topic-count {
-            font-size: 11px;
-            color: var(--text-light);
-        }
-
-        /* Reminder card */
-        .reminder-card {
-            background: linear-gradient(135deg, var(--yellow) 0%, var(--peach) 100%);
-            border-radius: 18px;
-            padding: 16px;
-            margin-bottom: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .reminder-card::after {
-            content: '🔔';
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 30px;
-            opacity: 0.6;
-        }
-
-        .reminder-time {
-            font-size: 12px;
-            color: var(--text-light);
-            margin-bottom: 4px;
-        }
-
-        .reminder-title {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        .reminder-desc {
-            font-size: 12px;
-            color: var(--text-light);
-        }
-
-        /* Stats bar */
-        .stats-bar {
-            display: flex;
-            justify-content: space-around;
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            border: 2px solid var(--border);
-            margin-bottom: 20px;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--text);
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: var(--text-light);
-            margin-top: 2px;
-        }
-
-        /* Page transitions */
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 2px;
-        }
-
-        /* Badge */
-        .badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            width: 16px;
-            height: 16px;
-            background: #FF6B6B;
-            border-radius: 50%;
-            font-size: 9px;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-
-        /* Hand-drawn underline */
-        .hand-underline {
-            position: relative;
-            display: inline-block;
-        }
-
-        .hand-underline::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--mint);
-            border-radius: 2px;
-            transform: rotate(-0.5deg);
-        }
-
-        /* Confetti */
-        .confetti {
-            position: fixed;
-            top: -10px;
-            z-index: 400;
-            animation: confettiFall 3s ease-in forwards;
-            pointer-events: none;
-        }
-
-        @keyframes confettiFall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: rgba(90, 74, 58, 0.9);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 14px;
-            z-index: 500;
-            opacity: 0;
-            transition: all 0.3s;
-            pointer-events: none;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        /* Responsive */
-        @media (max-width: 420px) {
-            .phone-frame {
-                max-width: 100%;
-            }
-            .bottom-nav {
-                max-width: 100%;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>饭搭子·食光机 - 小程序UI设计方案</title>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F9F6F0;
+    --mint: #A3C9B3;
+    --yellow: #F2D588;
+    --pink: #E8B4B8;
+    --blue: #AEC6CF;
+    --text: #4A3F35;
+    --card-bg: #FFFFFF;
+    --shadow: 6px 6px 0px #4A3F35;
+    --shadow-hover: 10px 10px 0px #4A3F35;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg);
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* 装饰性背景元素 */
+  body::before {
+    content: "✦ ✧ ✦ ✧";
+    position: absolute;
+    top: 60px;
+    left: 5%;
+    font-size: 24px;
+    color: var(--yellow);
+    letter-spacing: 30px;
+    opacity: 0.6;
+    transform: rotate(-15deg);
+  }
+
+  body::after {
+    content: "〰️ 〰️ 〰️";
+    position: absolute;
+    bottom: 100px;
+    right: 5%;
+    font-size: 32px;
+    color: var(--mint);
+    letter-spacing: 10px;
+    opacity: 0.5;
+    transform: rotate(10deg);
+  }
+
+  /* 头部介绍 */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    z-index: 10;
+    max-width: 800px;
+  }
+
+  .header h1 {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 48px;
+    margin-bottom: 16px;
+    position: relative;
+    display: inline-block;
+  }
+
+  .header h1::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background-color: var(--yellow);
+    border-radius: 4px;
+    z-index: -1;
+    transform: skewX(-10deg);
+  }
+
+  .slogan {
+    font-size: 20px;
+    color: #666;
+    margin-bottom: 24px;
+    font-weight: 700;
+  }
+
+  .design-tags {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .design-tag {
+    background: var(--card-bg);
+    border: 2px solid var(--text);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 3px 3px 0px var(--text);
+  }
+
+  /* 手机模型容器 */
+  .mockups-container {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+    flex-wrap: wrap;
+    margin-bottom: 80px;
+    z-index: 10;
+  }
+
+  /* 手机外壳 */
+  .phone {
+    width: 320px;
+    height: 680px;
+    background: var(--card-bg);
+    border-radius: 45px;
+    border: 6px solid var(--text);
+    box-shadow: 12px 12px 0px var(--text);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+
+  .phone:hover {
+    transform: translateY(-10px);
+  }
+
+  .phone-screen {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    padding-bottom: 80px; /* 留出底部导航空间 */
+  }
+
+  .phone-screen::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 状态栏 */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 2px dashed #eee;
+    margin-bottom: 15px;
+  }
+
+  /* 底部导航 */
+  .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: var(--card-bg);
+    border-top: 3px solid var(--text);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #999;
+    gap: 4px;
+  }
+
+  .tab.active {
+    color: var(--text);
+  }
+
+  .tab-icon {
+    font-size: 24px;
+  }
+
+  /* 通用组件样式 */
+  .screen-title {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 3px solid var(--text);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+  }
+
+  .card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-hover);
+  }
+
+  /* 盲盒卡片 */
+  .blind-box {
+    background: var(--mint);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .blind-box::before {
+    content: "✨";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    animation: twinkle 2s infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+  }
+
+  .box-visual {
+    font-size: 48px;
+    background: var(--card-bg);
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 3px solid var(--text);
+    box-shadow: 3px 3px 0px var(--text);
+  }
+
+  .box-text h3 {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .box-text p {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0.8;
+  }
+
+  .btn-shake {
+    background: var(--yellow);
+    border: 2px solid var(--text);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 3px 3px 0px var(--text);
+    margin-left: auto;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-shake:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  /* 列表标题 */
+  .list-title {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 饭局卡片 */
+  .meal-card {
+    background: var(--card-bg);
+    border: 2px dashed var(--text);
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .meal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .tag {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1.5px solid var(--text);
+  }
+
+  .tag-pink { background: var(--pink); }
+  .tag-blue { background: var(--blue); }
+  .tag-mint { background: var(--mint); }
+  .tag-yellow { background: var(--yellow); }
+
+  .dept {
+    font-size: 12px;
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-weight: bold;
+  }
+
+  .meal-card h4 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .meal-info {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .meal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed #eee;
+    padding-top: 12px;
+  }
+
+  .avatars {
+    font-size: 18px;
+    letter-spacing: -5px;
+  }
+
+  .status {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--mint);
+    background: #e8f5e9;
+    padding: 4px 10px;
+    border-radius: 10px;
+  }
+
+  .status.full {
+    color: var(--pink);
+    background: #ffebee;
+  }
+
+  /* 表单样式 (发起页) */
+  .form-card {
+    background: var(--card-bg);
+    border: 3px solid var(--text);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+
+  .form-card h3 {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .form-item {
+    margin-bottom: 20px;
+  }
+
+  .form-item label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+
+  .input-box {
+    background: #fdfdfd;
+    border: 2px solid var(--text);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 3px 3px 0px #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 12px;
+  }
+
+  .radio-btn {
+    flex: 1;
+    background: #fdfdfd;
+    border: 2px solid var(--text);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .radio-btn.active {
+    background: var(--yellow);
+    box-shadow: 3px 3px 0px var(--text);
+    transform: translate(-2px, -2px);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--mint);
+    border: 3px solid var(--text);
+    border-radius: 20px;
+    padding: 16px;
+    font-size: 18px;
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-weight: bold;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* 消息样式 */
+  .msg-card {
+    display: flex;
+    gap: 15px;
+    background: var(--card-bg);
+    border: 2px solid var(--text);
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 4px 4px 0px #eee;
+  }
+
+  .msg-icon {
+    font-size: 28px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9f9f9;
+    border-radius: 50%;
+    border: 2px solid #eee;
+  }
+
+  .msg-content h4 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .msg-content p {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+  }
+
+  .msg-success { border-left: 6px solid var(--mint); }
+  .msg-remind { border-left: 6px solid var(--yellow); }
+  .msg-ice { border-left: 6px solid var(--pink); }
+
+  /* 底部特性介绍 */
+  .features {
+    max-width: 1000px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+    z-index: 10;
+  }
+
+  .feature-card {
+    background: var(--card-bg);
+    border: 3px solid var(--text);
+    border-radius: 24px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 8px 8px 0px var(--text);
+    transition: transform 0.3s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px) rotate(-1deg);
+  }
+
+  .feature-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .feature-card h3 {
+    font-family: 'ZCOOL KuaiLe', cursive;
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+  }
+
+  /* 响应式调整 */
+  @media (max-width: 768px) {
+    .mockups-container {
+      gap: 40px;
+    }
+    .header h1 {
+      font-size: 36px;
+    }
+    .phone {
+      transform: scale(0.9);
+    }
+  }
+</style>
 </head>
 <body>
-    <div class="phone-frame">
-        <!-- Header -->
-        <div class="header">
-            <span class="deco deco-1">🍃</span>
-            <span class="deco deco-2">☁️</span>
-            <span class="deco deco-3">🌸</span>
-            <div class="header-top">
-                <div class="logo">
-                    <div class="logo-icon">🍽️</div>
-                    <span>饭搭子</span>
-                </div>
-                <div class="header-actions">
-                    <div class="header-btn" onclick="showToast('消息中心开发中~')">
-                        💬
-                        <span class="badge">3</span>
-                    </div>
-                    <div class="header-btn" onclick="showToast('个人中心')">👤</div>
-                </div>
-            </div>
-            <div class="greeting">
-                <div>今天也要好好吃饭呀 ☀️</div>
-                <div class="greeting-name">Hi，小明同学</div>
-            </div>
+
+  <!-- 头部介绍 -->
+  <header class="header">
+    <h1>饭搭子·食光机 🍽️</h1>
+    <p class="slogan">不止于一顿饭，遇见有趣的“跨”界灵魂。</p>
+    <div class="design-tags">
+      <span class="design-tag">🎨 低饱和多巴胺</span>
+      <span class="design-tag">✏️ 手绘治愈风</span>
+      <span class="design-tag">🤝 跨部门破冰</span>
+      <span class="design-tag">🎲 盲盒匹配</span>
+    </div>
+  </header>
+
+  <!-- 手机模型展示区 -->
+  <section class="mockups-container">
+    
+    <!-- 手机 1: 首页广场 -->
+    <div class="phone">
+      <div class="status-bar">
+        <span>12:00</span>
+        <span>📶 🔋</span>
+      </div>
+      <div class="phone-screen">
+        <h2 class="screen-title">食光广场 🍽️</h2>
+        <p class="subtitle">Hi, 今天想和谁吃饭？</p>
+
+        <!-- 盲盒卡片 -->
+        <div class="card blind-box">
+          <div class="box-visual">🎁</div>
+          <div class="box-text">
+            <h3>今日盲盒</h3>
+            <p>一键摇出跨部门饭搭子</p>
+          </div>
+          <button class="btn-shake">摇一摇 🪄</button>
         </div>
 
-        <!-- Main Content -->
-        <div class="content">
-            <!-- Page: Home -->
-            <div class="page active" id="page-home">
-                <!-- Stats -->
-                <div class="stats-bar">
-                    <div class="stat-item">
-                        <div class="stat-number">128</div>
-                        <div class="stat-label">今日约饭</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">23</div>
-                        <div class="stat-label">跨部门局</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">5</div>
-                        <div class="stat-label">我的饭搭子</div>
-                    </div>
-                </div>
+        <div class="list-title">🔥 附近热门饭局</div>
 
-                <!-- Quick Actions -->
-                <div class="quick-actions">
-                    <div class="quick-action" onclick="openModal('create')">
-                        <div class="quick-action-icon">📝</div>
-                        <div class="quick-action-text">发起约饭</div>
-                    </div>
-                    <div class="quick-action" onclick="openModal('match')">
-                        <div class="quick-action-icon">🎲</div>
-                        <div class="quick-action-text">随机匹配</div>
-                    </div>
-                    <div class="quick-action" onclick="switchPage('topics')">
-                        <div class="quick-action-icon">💬</div>
-                        <div class="quick-action-text">话题小组</div>
-                    </div>
-                    <div class="quick-action" onclick="openModal('interest')">
-                        <div class="quick-action-icon">🏷️</div>
-                        <div class="quick-action-text">兴趣标签</div>
-                    </div>
-                </div>
-
-                <!-- Reminder -->
-                <div class="reminder-card">
-                    <div class="reminder-time">今天 12:00</div>
-                    <div class="reminder-title">午餐提醒 🍱</div>
-                    <div class="reminder-desc">你已报名A食堂3楼·与设计部小伙伴的午餐</div>
-                </div>
-
-                <!-- Active meals -->
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">🔥 正在招募</div>
-                        <div class="section-more" onclick="switchPage('explore')">查看更多 ›</div>
-                    </div>
-
-                    <div class="meal-card mint" onclick="openModal('join')">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">周五午餐·随便聊聊</div>
-                                <div class="meal-meta">
-                                    <span>🕐 12:00</span>
-                                    <span>📍 A食堂2楼</span>
-                                    <span>👥 3/6人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-open">招募中</div>
-                        </div>
-                        <div class="meal-avatars">
-                            <div class="avatar avatar-1">王</div>
-                            <div class="avatar avatar-2">李</div>
-                            <div class="avatar avatar-3">张</div>
-                            <div class="avatar avatar-more">+3</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">设计部</span>
-                            <span class="tag tag-dept">产品部</span>
-                            <span class="tag">🎮 游戏</span>
-                            <span class="tag">🐱 萌宠</span>
-                        </div>
-                    </div>
-
-                    <div class="meal-card peach">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">新品尝鲜·一起探店</div>
-                                <div class="meal-meta">
-                                    <span>🕐 18:30</span>
-                                    <span>📍 B食堂1楼</span>
-                                    <span>👥 4/4人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-full">已满</div>
-                        </div>
-                        <div class="meal-avatars">
-                            <div class="avatar avatar-4">陈</div>
-                            <div class="avatar avatar-1">赵</div>
-                            <div class="avatar avatar-2">孙</div>
-                            <div class="avatar avatar-3">周</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">技术部</span>
-                            <span class="tag tag-dept">市场部</span>
-                            <span class="tag">🍜 美食</span>
-                        </div>
-                    </div>
-
-                    <div class="meal-card lavender">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">下午茶·聊聊AI</div>
-                                <div class="meal-meta">
-                                    <span>🕐 15:00</span>
-                                    <span>📍 C食堂咖啡角</span>
-                                    <span>👥 2/5人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-soon">即将开始</div>
-                        </div>
-                        <div class="meal-avatars">
-                            <div class="avatar avatar-2">刘</div>
-                            <div class="avatar avatar-4">黄</div>
-                            <div class="avatar avatar-more">+3</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">技术部</span>
-                            <span class="tag tag-dept">运营部</span>
-                            <span class="tag">🤖 AI</span>
-                            <span class="tag">💡 创新</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page: Explore -->
-            <div class="page" id="page-explore">
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">🔍 发现饭局</div>
-                    </div>
-
-                    <!-- Filter -->
-                    <div style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;">
-                        <span class="interest-tag selected" style="font-size:12px; padding:6px 12px;">全部</span>
-                        <span class="interest-tag" style="font-size:12px; padding:6px 12px;">午餐</span>
-                        <span class="interest-tag" style="font-size:12px; padding:6px 12px;">晚餐</span>
-                        <span class="interest-tag" style="font-size:12px; padding:6px 12px;">下午茶</span>
-                        <span class="interest-tag" style="font-size:12px; padding:6px 12px;">跨部门</span>
-                    </div>
-
-                    <div class="meal-card pink">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">健身餐搭子·减脂交流</div>
-                                <div class="meal-meta">
-                                    <span>🕐 12:00</span>
-                                    <span>📍 A食堂轻食区</span>
-                                    <span>👥 2/4人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-open">招募中</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">人事部</span>
-                            <span class="tag tag-dept">财务部</span>
-                            <span class="tag">💪 健身</span>
-                            <span class="tag">🥗 轻食</span>
-                        </div>
-                    </div>
-
-                    <div class="meal-card mint">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">新人报到·欢迎午餐</div>
-                                <div class="meal-meta">
-                                    <span>🕐 12:00</span>
-                                    <span>📍 B食堂3楼</span>
-                                    <span>👥 5/8人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-open">招募中</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">技术部</span>
-                            <span class="tag tag-dept">产品部</span>
-                            <span class="tag tag-dept">设计部</span>
-                            <span class="tag">👋 新人</span>
-                        </div>
-                    </div>
-
-                    <div class="meal-card peach">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">加班晚餐·能量补给</div>
-                                <div class="meal-meta">
-                                    <span>🕐 19:00</span>
-                                    <span>📍 A食堂2楼</span>
-                                    <span>👥 3/6人</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-open">招募中</div>
-                        </div>
-                        <div class="meal-tags">
-                            <span class="tag tag-dept">技术部</span>
-                            <span class="tag">🌙 加班</span>
-                            <span class="tag">🍲 火锅</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page: Topics -->
-            <div class="page" id="page-topics">
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">💬 话题小组</div>
-                        <div class="section-more">创建话题 +</div>
-                    </div>
-
-                    <div class="topic-cards">
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">🎮</div>
-                            <div class="topic-name">游戏开黑局</div>
-                            <div class="topic-count">32人参与 · 8个饭局</div>
-                        </div>
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">📚</div>
-                            <div class="topic-name">读书分享会</div>
-                            <div class="topic-count">18人参与 · 3个饭局</div>
-                        </div>
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">🐱</div>
-                            <div class="topic-name">铲屎官联盟</div>
-                            <div class="topic-count">45人参与 · 12个饭局</div>
-                        </div>
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">🏃</div>
-                            <div class="topic-name">运动健身圈</div>
-                            <div class="topic-count">27人参与 · 6个饭局</div>
-                        </div>
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">🎬</div>
-                            <div class="topic-name">影视讨论组</div>
-                            <div class="topic-count">21人参与 · 5个饭局</div>
-                        </div>
-                        <div class="topic-card" onclick="showToast('进入话题小组')">
-                            <div class="topic-emoji">☕</div>
-                            <div class="topic-name">咖啡爱好者</div>
-                            <div class="topic-count">38人参与 · 9个饭局</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page: Profile -->
-            <div class="page" id="page-profile">
-                <div style="text-align:center; padding:20px 0;">
-                    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--mint),var(--lavender));margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:30px;">😊</div>
-                    <div style="font-size:18px;font-weight:bold;">小明同学</div>
-                    <div style="font-size:13px;color:var(--text-light);margin-top:4px;">产品部 · 入职2年</div>
-                </div>
-
-                <div class="stats-bar">
-                    <div class="stat-item">
-                        <div class="stat-number">15</div>
-                        <div class="stat-label">约饭次数</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">8</div>
-                        <div class="stat-label">跨部门</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">5</div>
-                        <div class="stat-label">饭搭子</div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">📅 我的饭局</div>
-                    </div>
-                    <div class="meal-card mint">
-                        <div class="meal-card-header">
-                            <div class="meal-info">
-                                <div class="meal-title">周五午餐·与设计部小伙伴</div>
-                                <div class="meal-meta">
-                                    <span>🕐 今天 12:00</span>
-                                    <span>📍 A食堂3楼</span>
-                                </div>
-                            </div>
-                            <div class="meal-status status-soon">待用餐</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">🏷️ 我的标签</div>
-                    </div>
-                    <div class="interest-tags">
-                        <span class="interest-tag selected">🎮 游戏</span>
-                        <span class="interest-tag selected">🐱 萌宠</span>
-                        <span class="interest-tag selected">🍜 美食</span>
-                        <span class="interest-tag">📚 读书</span>
-                        <span class="interest-tag">🏃 运动</span>
-                    </div>
-                </div>
-            </div>
+        <!-- 饭局列表 1 -->
+        <div class="meal-card">
+          <div class="meal-header">
+            <span class="tag tag-pink">#AI吐槽大会</span>
+            <span class="dept">产品部 🎨</span>
+          </div>
+          <h4>老李的干饭局</h4>
+          <div class="meal-info">
+            <span>📍 一食堂川菜</span>
+            <span>⏰ 12:00</span>
+          </div>
+          <div class="meal-footer">
+            <div class="avatars">👤👤</div>
+            <span class="status">还差2人</span>
+          </div>
         </div>
 
-        <!-- Bottom Navigation -->
-        <div class="bottom-nav">
-            <div class="nav-item active" onclick="switchPage('home')">
-                <div class="nav-icon">🏠</div>
-                <div class="nav-text">首页</div>
-            </div>
-            <div class="nav-item" onclick="switchPage('explore')">
-                <div class="nav-icon">🔍</div>
-                <div class="nav-text">发现</div>
-            </div>
-            <div class="nav-item" onclick="openModal('create')">
-                <div class="nav-icon" style="font-size:28px;">➕</div>
-                <div class="nav-text">发起</div>
-            </div>
-            <div class="nav-item" onclick="switchPage('topics')">
-                <div class="nav-icon">💬</div>
-                <div class="nav-text">话题</div>
-            </div>
-            <div class="nav-item" onclick="switchPage('profile')">
-                <div class="nav-icon">👤</div>
-                <div class="nav-text">我的</div>
-            </div>
+        <!-- 饭局列表 2 -->
+        <div class="meal-card">
+          <div class="meal-header">
+            <span class="tag tag-blue">#铲屎官交流</span>
+            <span class="dept">市场部 📢</span>
+          </div>
+          <h4>猫猫联盟聚餐</h4>
+          <div class="meal-info">
+            <span>📍 二食堂轻食</span>
+            <span>⏰ 12:30</span>
+          </div>
+          <div class="meal-footer">
+            <div class="avatars">👤👤👤👤</div>
+            <span class="status full">已满员</span>
+          </div>
         </div>
+      </div>
+      
+      <!-- 底部导航 -->
+      <div class="tab-bar">
+        <div class="tab active">
+          <span class="tab-icon">🏠</span>
+          <span>广场</span>
+        </div>
+        <div class="tab">
+          <span class="tab-icon">➕</span>
+          <span>发起</span>
+        </div>
+        <div class="tab">
+          <span class="tab-icon">💬</span>
+          <span>消息</span>
+        </div>
+        <div class="tab">
+          <span class="tab-icon">👤</span>
+          <span>我的</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Create Meal Modal -->
-    <div class="modal-overlay" id="modal-create">
-        <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-title">📝 发起约饭</div>
-
-            <div class="form-group">
-                <label class="form-label">选择用餐时间</label>
-                <div class="time-options">
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">🌅</div>
-                        <div class="time-option-text">早餐</div>
-                        <div class="time-option-time">7:30-9:00</div>
-                    </div>
-                    <div class="time-option selected" onclick="selectTime(this)">
-                        <div class="time-option-icon">☀️</div>
-                        <div class="time-option-text">午餐</div>
-                        <div class="time-option-time">11:30-13:00</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">🌆</div>
-                        <div class="time-option-text">晚餐</div>
-                        <div class="time-option-time">17:30-19:30</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">☕</div>
-                        <div class="time-option-text">下午茶</div>
-                        <div class="time-option-time">14:30-16:00</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">🌙</div>
-                        <div class="time-option-text">夜宵</div>
-                        <div class="time-option-time">20:00-21:30</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">📅</div>
-                        <div class="time-option-text">自定义</div>
-                        <div class="time-option-time">选择时间</div>
-                    </div>
-                </div>
+    <!-- 手机 2: 发起组局 -->
+    <div class="phone">
+      <div class="status-bar">
+        <span>12:00</span>
+        <span>📶 🔋</span>
+      </div>
+      <div class="phone-screen">
+        <div class="form-card">
+          <h3>🍳 发起干饭局</h3>
+          
+          <div class="form-item">
+            <label>📅 用餐时间</label>
+            <div class="input-box">
+              <span>今天中午 12:00</span>
+              <span>▼</span>
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label">选择食堂地点</label>
-                <div class="location-options">
-                    <div class="location-option selected" onclick="selectLocation(this)">
-                        <div class="location-icon">🏢</div>
-                        <div>
-                            <div class="location-name">A食堂</div>
-                            <div class="location-desc">2楼·中餐</div>
-                        </div>
-                    </div>
-                    <div class="location-option" onclick="selectLocation(this)">
-                        <div class="location-icon">🏬</div>
-                        <div>
-                            <div class="location-name">B食堂</div>
-                            <div class="location-desc">1楼·特色</div>
-                        </div>
-                    </div>
-                    <div class="location-option" onclick="selectLocation(this)">
-                        <div class="location-icon">🍵</div>
-                        <div>
-                            <div class="location-name">C食堂</div>
-                            <div class="location-desc">咖啡角</div>
-                        </div>
-                    </div>
-                    <div class="location-option" onclick="selectLocation(this)">
-                        <div class="location-icon">🥗</div>
-                        <div>
-                            <div class="location-name">轻食区</div>
-                            <div class="location-desc">A食堂·健康</div>
-                        </div>
-                    </div>
-                </div>
+          <div class="form-item">
+            <label>📍 食堂地点</label>
+            <div class="input-box">
+              <span>一食堂 (川菜窗口)</span>
+              <span>▼</span>
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label">人数偏好</label>
-                <div class="people-selector">
-                    <button class="people-btn" onclick="changePeople(-1)">−</button>
-                    <div class="people-count" id="people-count">4</div>
-                    <button class="people-btn" onclick="changePeople(1)">+</button>
-                    <div class="people-label">人（含自己）</div>
-                </div>
+          <div class="form-item">
+            <label>👥 组局模式</label>
+            <div class="radio-group">
+              <div class="radio-btn active">🌈 跨部门强制</div>
+              <div class="radio-btn">💬 话题同好</div>
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label">饭局主题（选填）</label>
-                <input class="form-input" placeholder="例如：聊聊最近的项目、交流读书心得..." />
+          <div class="form-item">
+            <label>🏷️ 兴趣标签</label>
+            <div class="tags">
+              <span class="tag tag-mint">#无辣不欢</span>
+              <span class="tag tag-yellow">#MBTI大乱炖</span>
+              <span class="tag tag-blue">#减脂餐搭子</span>
+              <span class="tag tag-pink">#准点下班</span>
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label">跨部门优先</label>
-                <div style="display:flex; gap:10px;">
-                    <div class="time-option selected" style="flex:1; padding:10px;" onclick="selectDeptMode(this)">
-                        <div style="font-size:14px;">🌈 跨部门优先</div>
-                    </div>
-                    <div class="time-option" style="flex:1; padding:10px;" onclick="selectDeptMode(this)">
-                        <div style="font-size:14px;">🎯 不限部门</div>
-                    </div>
-                </div>
-            </div>
-
-            <button class="match-btn" onclick="startMatching()">
-                发布并匹配饭搭子
-            </button>
-
-            <div style="text-align:center; margin-top:12px;">
-                <span style="font-size:12px; color:var(--text-light); cursor:pointer;" onclick="closeModal('create')">取消</span>
-            </div>
+          <button class="btn-primary">发布饭局 🚀</button>
         </div>
-    </div>
+      </div>
 
-    <!-- Random Match Modal -->
-    <div class="modal-overlay" id="modal-match">
-        <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-title">🎲 随机匹配</div>
-            <p style="text-align:center; color:var(--text-light); font-size:14px; margin-bottom:20px; line-height:1.6;">
-                系统将根据你的部门、兴趣标签<br/>为你匹配不同部门的小伙伴<br/>一起享受美食，拓展人脉 ✨
-            </p>
-
-            <div class="form-group">
-                <label class="form-label">选择用餐时间</label>
-                <div class="time-options">
-                    <div class="time-option selected" onclick="selectTime(this)">
-                        <div class="time-option-icon">☀️</div>
-                        <div class="time-option-text">午餐</div>
-                        <div class="time-option-time">11:30-13:00</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">🌆</div>
-                        <div class="time-option-text">晚餐</div>
-                        <div class="time-option-time">17:30-19:30</div>
-                    </div>
-                    <div class="time-option" onclick="selectTime(this)">
-                        <div class="time-option-icon">☕</div>
-                        <div class="time-option-text">下午茶</div>
-                        <div class="time-option-time">14:30-16:00</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">匹配人数</label>
-                <div class="people-selector">
-                    <button class="people-btn" onclick="changeMatchPeople(-1)">−</button>
-                    <div class="people-count" id="match-people-count">3</div>
-                    <button class="people-btn" onclick="changeMatchPeople(1)">+</button>
-                    <div class="people-label">人（含自己）</div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">选择食堂</label>
-                <select class="form-select">
-                    <option>系统自动分配</option>
-                    <option>A食堂 2楼</option>
-                    <option>B食堂 1楼</option>
-                    <option>C食堂 咖啡角</option>
-                </select>
-            </div>
-
-            <button class="match-btn" onclick="startRandomMatch()">
-                开始随机匹配 🎲
-            </button>
-
-            <div style="text-align:center; margin-top:12px;">
-                <span style="font-size:12px; color:var(--text-light); cursor:pointer;" onclick="closeModal('match')">取消</span>
-            </div>
+      <!-- 底部导航 -->
+      <div class="tab-bar">
+        <div class="tab">
+          <span class="tab-icon">🏠</span>
+          <span>广场</span>
         </div>
-    </div>
-
-    <!-- Interest Tags Modal -->
-    <div class="modal-overlay" id="modal-interest">
-        <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-title">🏷️ 兴趣标签</div>
-            <p style="text-align:center; color:var(--text-light); font-size:14px; margin-bottom:20px;">
-                选择你感兴趣的标签，找到志同道合的饭搭子
-            </p>
-
-            <div class="form-group">
-                <label class="form-label">美食偏好</label>
-                <div class="interest-tags">
-                    <span class="interest-tag" onclick="toggleTag(this)">🍜 面食</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🍲 火锅</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🍣 日料</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🥗 轻食</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🍰 甜品</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">☕ 咖啡</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">兴趣爱好</label>
-                <div class="interest-tags">
-                    <span class="interest-tag" onclick="toggleTag(this)">🎮 游戏</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">📚 读书</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🎬 影视</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🎵 音乐</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🏃 运动</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">📷 摄影</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🐱 萌宠</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">✈️ 旅行</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">聊天话题</label>
-                <div class="interest-tags">
-                    <span class="interest-tag" onclick="toggleTag(this)">💡 创新</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🤖 AI</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">💰 理财</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🏠 房产</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">👶 育儿</span>
-                    <span class="interest-tag" onclick="toggleTag(this)">🎯 职场</span>
-                </div>
-            </div>
-
-            <button class="match-btn" onclick="saveInterests()">
-                保存标签 ✓
-            </button>
+        <div class="tab active">
+          <span class="tab-icon">➕</span>
+          <span>发起</span>
         </div>
-    </div>
-
-    <!-- Join Meal Modal -->
-    <div class="modal-overlay" id="modal-join">
-        <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-title">📋 饭局详情</div>
-
-            <div class="match-result">
-                <div class="match-result-header">
-                    <div class="match-result-avatar">🍽️</div>
-                    <div class="match-result-info">
-                        <h4>周五午餐·随便聊聊</h4>
-                        <p>发起人：王同学 · 设计部</p>
-                    </div>
-                </div>
-                <div class="match-detail">
-                    <div class="match-detail-item">
-                        <span>时间</span>
-                        <strong>今天 12:00</strong>
-                    </div>
-                    <div class="match-detail-item">
-                        <span>地点</span>
-                        <strong>A食堂2楼</strong>
-                    </div>
-                    <div class="match-detail-item">
-                        <span>人数</span>
-                        <strong>3/6人</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">已报名成员</label>
-                <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:6px; background:white; padding:8px 12px; border-radius:12px; border:1.5px solid var(--border);">
-                        <div class="avatar avatar-1" style="width:24px;height:24px;font-size:10px;margin:0;">王</div>
-                        <span style="font-size:12px;">王同学 · 设计部</span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; background:white; padding:8px 12px; border-radius:12px; border:1.5px solid var(--border);">
-                        <div class="avatar avatar-2" style="width:24px;height:24px;font-size:10px;margin:0;">李</div>
-                        <span style="font-size:12px;">李同学 · 产品部</span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; background:white; padding:8px 12px; border-radius:12px; border:1.5px solid var(--border);">
-                        <div class="avatar avatar-3" style="width:24px;height:24px;font-size:10px;margin:0;">张</div>
-                        <span style="font-size:12px;">张同学 · 设计部</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="meal-tags" style="margin-bottom:16px;">
-                <span class="tag">🎮 游戏</span>
-                <span class="tag">🐱 萌宠</span>
-                <span class="tag">💬 随便聊</span>
-            </div>
-
-            <button class="match-btn" onclick="confirmJoin()">
-                确认报名 🙋
-            </button>
-
-            <div style="text-align:center; margin-top:12px;">
-                <span style="font-size:12px; color:var(--text-light); cursor:pointer;" onclick="closeModal('join')">取消</span>
-            </div>
+        <div class="tab">
+          <span class="tab-icon">💬</span>
+          <span>消息</span>
         </div>
-    </div>
-
-    <!-- Matching Animation Overlay -->
-    <div class="matching-overlay" id="matching-overlay">
-        <div class="matching-animation">🍽️</div>
-        <div class="matching-text">正在为你匹配饭搭子<span class="matching-dots"></span></div>
-        <div class="matching-sub">正在寻找跨部门的小伙伴</div>
-    </div>
-
-    <!-- Success Modal -->
-    <div class="modal-overlay" id="modal-success">
-        <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="success-content">
-                <div class="success-icon">🎉</div>
-                <div class="success-title">匹配成功！</div>
-                <div class="success-desc">
-                    已为你找到跨部门的饭搭子<br/>
-                    一起享受美食，拓展人脉吧！
-                </div>
-
-                <div class="match-result">
-                    <div class="match-result-header">
-                        <div class="match-result-avatar">👩</div>
-                        <div class="match-result-info">
-                            <h4>午餐小分队</h4>
-                            <p>来自3个不同部门的小伙伴</p>
-                        </div>
-                    </div>
-                    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-                        <div style="display:flex; align-items:center; gap:6px; background:var(--cream); padding:6px 10px; border-radius:10px;">
-                            <div class="avatar avatar-1" style="width:22px;height:22px;font-size:9px;margin:0;">你</div>
-                            <span style="font-size:11px;">小明·产品部</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px; background:var(--cream); padding:6px 10px; border-radius:10px;">
-                            <div class="avatar avatar-2" style="width:22px;height:22px;font-size:9px;margin:0;">陈</div>
-                            <span style="font-size:11px;">陈同学·设计部</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px; background:var(--cream); padding:6px 10px; border-radius:10px;">
-                            <div class="avatar avatar-3" style="width:22px;height:22px;font-size:9px;margin:0;">赵</div>
-                            <span style="font-size:11px;">赵同学·技术部</span>
-                        </div>
-                    </div>
-                    <div class="match-detail">
-                        <div class="match-detail-item">
-                            <span>时间</span>
-                            <strong>今天 12:00</strong>
-                        </div>
-                        <div class="match-detail-item">
-                            <span>地点</span>
-                            <strong>A食堂2楼</strong>
-                        </div>
-                        <div class="match-detail-item">
-                            <span>共同兴趣</span>
-                            <strong>🎮 🐱</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <button class="match-btn" onclick="closeSuccess()">
-                    太棒了！确认赴约 🎊
-                </button>
-            </div>
+        <div class="tab">
+          <span class="tab-icon">👤</span>
+          <span>我的</span>
         </div>
+      </div>
     </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
+    <!-- 手机 3: 消息与提醒 -->
+    <div class="phone">
+      <div class="status-bar">
+        <span>12:00</span>
+        <span>📶 🔋</span>
+      </div>
+      <div class="phone-screen">
+        <h2 class="screen-title">干饭情报局 📢</h2>
+        <p class="subtitle">你的饭局最新动态</p>
 
-    <script>
-        // Page switching
-        function switchPage(page) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById('page-' + page).classList.add('active');
-            
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            const navItems = document.querySelectorAll('.nav-item');
-            const pageMap = { home: 0, explore: 1, topics: 3, profile: 4 };
-            if (pageMap[page] !== undefined) {
-                navItems[pageMap[page]].classList.add('active');
-            }
-        }
+        <div class="msg-card msg-success">
+          <div class="msg-icon">✅</div>
+          <div class="msg-content">
+            <h4>报名成功！</h4>
+            <p>主理人[研发部-王哥]已确认你的申请，快去群里打个招呼吧~</p>
+          </div>
+        </div>
 
-        // Modal management
-        function openModal(type) {
-            document.getElementById('modal-' + type).classList.add('active');
-        }
+        <div class="msg-card msg-remind">
+          <div class="msg-icon">⏰</div>
+          <div class="msg-content">
+            <h4>饭局临近</h4>
+            <p>距离开饭还有30分钟，[一食堂]见！记得带上好胃口和暗号“穿白T恤”~</p>
+          </div>
+        </div>
 
-        function closeModal(type) {
-            document.getElementById('modal-' + type).classList.remove('active');
-        }
+        <div class="msg-card msg-ice">
+          <div class="msg-icon">🃏</div>
+          <div class="msg-content">
+            <h4>破冰手帐卡</h4>
+            <p>系统机器人：大家今天都点了什么菜？分享一个本周遇到的奇葩Bug吧！</p>
+          </div>
+        </div>
 
-        // Time selection
-        function selectTime(el) {
-            el.parentElement.querySelectorAll('.time-option').forEach(t => t.classList.remove('selected'));
-            el.classList.add('selected');
-        }
+        <div class="msg-card" style="border-left: 6px solid var(--blue);">
+          <div class="msg-icon">🏆</div>
+          <div class="msg-content">
+            <h4>解锁新徽章</h4>
+            <p>恭喜你！已成功“吃透”【市场部】，获得跨界交际花称号！</p>
+          </div>
+        </div>
+      </div>
 
-        // Location selection
-        function selectLocation(el) {
-            el.parentElement.querySelectorAll('.location-option').forEach(l => l.classList.remove('selected'));
-            el.classList.add('selected');
-        }
+      <!-- 底部导航 -->
+      <div class="tab-bar">
+        <div class="tab">
+          <span class="tab-icon">🏠</span>
+          <span>广场</span>
+        </div>
+        <div class="tab">
+          <span class="tab-icon">➕</span>
+          <span>发起</span>
+        </div>
+        <div class="tab active">
+          <span class="tab-icon">💬</span>
+          <span>消息</span>
+        </div>
+        <div class="tab">
+          <span class="tab-icon">👤</span>
+          <span>我的</span>
+        </div>
+      </div>
+    </div>
 
-        // Department mode
-        function selectDeptMode(el) {
-            el.parentElement.querySelectorAll('.time-option').forEach(t => t.classList.remove('selected'));
-            el.classList.add('selected');
-        }
+  </section>
 
-        // People count
-        let peopleCount = 4;
-        function changePeople(delta) {
-            peopleCount = Math.max(2, Math.min(10, peopleCount + delta));
-            document.getElementById('people-count').textContent = peopleCount;
-        }
+  <!-- 核心特性说明 -->
+  <section class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🎲</div>
+      <h3>随机盲盒匹配</h3>
+      <p>一键摇一摇，系统根据空闲时间与兴趣标签，为你随机匹配跨部门神秘饭搭子，打破社交舒适圈。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌈</div>
+      <h3>跨部门强制局</h3>
+      <p>特色组局模式，系统自动限制同部门人数比例，强制打散部门墙，让吃饭变成一场有趣的跨界探索。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🃏</div>
+      <h3>破冰手帐卡</h3>
+      <p>拒绝建群冷场！系统机器人在饭点自动抛出趣味话题卡，用游戏化的方式自然开启聊天，社恐也能轻松融入。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <h3>干饭地图成就</h3>
+      <p>可视化记录你的“跨界”足迹，点亮不同部门徽章，积累社交信用分，兑换食堂加鸡腿券或迟到豁免券。</p>
+    </div>
+  </section>
 
-        let matchPeopleCount = 3;
-        function changeMatchPeople(delta) {
-            matchPeopleCount = Math.max(2, Math.min(8, matchPeopleCount + delta));
-            document.getElementById('match-people-count').textContent = matchPeopleCount;
-        }
-
-        // Interest tags
-        function toggleTag(el) {
-            el.classList.toggle('selected');
-        }
-
-        function saveInterests() {
-            closeModal('interest');
-            showToast('标签已保存 ✓');
-        }
-
-        // Matching animation
-        function startMatching() {
-            closeModal('create');
-            document.getElementById('matching-overlay').classList.add('active');
-            
-            setTimeout(() => {
-                document.getElementById('matching-overlay').classList.remove('active');
-                showSuccess();
-            }, 2500);
-        }
-
-        function startRandomMatch() {
-            closeModal('match');
-            document.getElementById('matching-overlay').classList.add('active');
-            
-            setTimeout(() => {
-                document.getElementById('matching-overlay').classList.remove('active');
-                showSuccess();
-            }, 2500);
-        }
-
-        // Success
-        function showSuccess() {
-            document.getElementById('modal-success').classList.add('active');
-            createConfetti();
-        }
-
-        function closeSuccess() {
-            document.getElementById('modal-success').classList.remove('active');
-            showToast('已加入饭局，记得准时哦 🎉');
-        }
-
-        // Confirm join
-        function confirmJoin() {
-            closeModal('join');
-            showToast('报名成功！已发送提醒 📬');
-        }
-
-        // Toast
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        // Confetti
-        function createConfetti() {
-            const colors = ['#B8E6D5', '#FFD4C4', '#D4C5F9', '#FFF5CC', '#FFD6E0'];
-            const emojis = ['🎉', '✨', '🌟', '🎊', '💫'];
-            
-            for (let i = 0; i < 20; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + '%';
-                confetti.style.animationDelay = Math.random() * 1 + 's';
-                confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
-                confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                confetti.style.fontSize = (14 + Math.random() * 10) + 'px';
-                document.body.appendChild(confetti);
-                
-                setTimeout(() => confetti.remove(), 4000);
-            }
-        }
-
-        // Close modal on overlay click
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    overlay.classList.remove('active');
-                }
-            });
-        });
-    </script>
 </body>
 </html>
