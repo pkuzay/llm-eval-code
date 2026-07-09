@@ -1,836 +1,923 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>iOS 18 Weather Card</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS 18 Weather Card</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-body {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0a0a0f;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  overflow: hidden;
-}
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a0f;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+        }
 
-/* 背景光晕 */
-.bg-glow {
-  position: fixed;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.4;
-  transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-}
-.bg-glow.g1 { top: -200px; left: -200px; }
-.bg-glow.g2 { bottom: -200px; right: -200px; }
+        /* Ambient Background */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
 
-body[data-weather="sunny"] .bg-glow.g1 { background: #ff9500; }
-body[data-weather="sunny"] .bg-glow.g2 { background: #ffcc00; }
-body[data-weather="windy"] .bg-glow.g1 { background: #5e7a99; }
-body[data-weather="windy"] .bg-glow.g2 { background: #8aa5c2; }
-body[data-weather="rainy"] .bg-glow.g1 { background: #3d4a7a; }
-body[data-weather="rainy"] .bg-glow.g2 { background: #6b5b95; }
-body[data-weather="snowy"] .bg-glow.g1 { background: #7a9bc2; }
-body[data-weather="snowy"] .bg-glow.g2 { background: #b8d4e8; }
+        .ambient-bg.sunny {
+            background: radial-gradient(ellipse at 30% 20%, rgba(255, 149, 0, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(255, 69, 58, 0.08) 0%, transparent 40%),
+                        #0a0a0f;
+        }
 
-/* 主卡片 */
-.card {
-  position: relative;
-  width: 400px;
-  height: 640px;
-  border-radius: 40px;
-  background: linear-gradient(160deg, rgba(40, 45, 65, 0.6), rgba(20, 22, 35, 0.8));
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 30px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 1px 0 rgba(255, 255, 255, 0.1) inset;
-  overflow: hidden;
-  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
+        .ambient-bg.windy {
+            background: radial-gradient(ellipse at 50% 30%, rgba(100, 210, 255, 0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 20% 70%, rgba(72, 199, 142, 0.08) 0%, transparent 40%),
+                        #0a0a0f;
+        }
 
-/* 动态背景渐变层 */
-.weather-bg {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 1s ease;
-  pointer-events: none;
-}
-.weather-bg.active { opacity: 1; }
+        .ambient-bg.rainy {
+            background: radial-gradient(ellipse at 40% 30%, rgba(50, 100, 180, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 60%, rgba(100, 50, 150, 0.1) 0%, transparent 40%),
+                        #0a0a0f;
+        }
 
-.bg-sunny {
-  background:
-    radial-gradient(circle at 70% 20%, rgba(255, 180, 80, 0.35), transparent 50%),
-    radial-gradient(circle at 30% 80%, rgba(255, 120, 50, 0.15), transparent 60%);
-}
-.bg-windy {
-  background:
-    radial-gradient(circle at 20% 30%, rgba(140, 170, 200, 0.25), transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(90, 120, 160, 0.2), transparent 60%);
-}
-.bg-rainy {
-  background:
-    radial-gradient(circle at 50% 10%, rgba(100, 80, 150, 0.3), transparent 60%),
-    radial-gradient(circle at 50% 90%, rgba(50, 60, 100, 0.25), transparent 50%);
-}
-.bg-snowy {
-  background:
-    radial-gradient(circle at 50% 30%, rgba(180, 210, 240, 0.25), transparent 55%),
-    radial-gradient(circle at 50% 100%, rgba(220, 235, 250, 0.2), transparent 50%);
-}
+        .ambient-bg.snowy {
+            background: radial-gradient(ellipse at 50% 40%, rgba(180, 200, 255, 0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 30% 70%, rgba(100, 150, 255, 0.06) 0%, transparent 40%),
+                        #0a0a0f;
+        }
 
-/* 内容 */
-.content {
-  position: relative;
-  height: 100%;
-  padding: 32px 28px;
-  display: flex;
-  flex-direction: column;
-  z-index: 10;
-}
+        /* Main Card */
+        .weather-card {
+            position: relative;
+            width: 380px;
+            height: 560px;
+            border-radius: 32px;
+            overflow: hidden;
+            z-index: 1;
+            box-shadow: 
+                0 40px 80px rgba(0, 0, 0, 0.6),
+                0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
 
-/* 顶部信息 */
-.top-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  color: rgba(255, 255, 255, 0.9);
-}
-.location {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-}
-.date {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 4px;
-  font-weight: 500;
-}
-.menu-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-.menu-btn::before {
-  content: '';
-  width: 14px;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 5px 0 rgba(255, 255, 255, 0.7);
-}
+        .card-glass {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(40px) saturate(1.8);
+            -webkit-backdrop-filter: blur(40px) saturate(1.8);
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
 
-/* 天气动画区 */
-.weather-stage {
-  flex: 1;
-  position: relative;
-  margin: 20px 0;
-  overflow: hidden;
-  border-radius: 24px;
-}
+        .card-glass.sunny {
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 50%, rgba(20, 20, 30, 0.85) 100%);
+        }
 
-/* 晴天 - 太阳 */
-.sun-container {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.sun-container.active { opacity: 1; }
+        .card-glass.windy {
+            background: linear-gradient(135deg, rgba(100, 210, 255, 0.1) 0%, rgba(72, 199, 142, 0.06) 50%, rgba(20, 25, 30, 0.85) 100%);
+        }
 
-.sun {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff4c2 0%, #ffcc66 40%, #ff9500 80%);
-  box-shadow:
-    0 0 60px rgba(255, 180, 80, 0.8),
-    0 0 120px rgba(255, 150, 50, 0.4),
-    inset 0 0 30px rgba(255, 255, 200, 0.5);
-  animation: sunPulse 4s ease-in-out infinite;
-  position: relative;
-}
+        .card-glass.rainy {
+            background: linear-gradient(135deg, rgba(50, 100, 180, 0.12) 0%, rgba(80, 50, 120, 0.06) 50%, rgba(15, 15, 25, 0.88) 100%);
+        }
 
-@keyframes sunPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(255, 180, 80, 0.8), 0 0 120px rgba(255, 150, 50, 0.4); }
-  50% { transform: scale(1.05); box-shadow: 0 0 80px rgba(255, 180, 80, 1), 0 0 160px rgba(255, 150, 50, 0.6); }
-}
+        .card-glass.snowy {
+            background: linear-gradient(135deg, rgba(180, 210, 255, 0.1) 0%, rgba(120, 160, 220, 0.06) 50%, rgba(18, 18, 28, 0.85) 100%);
+        }
 
-.sun-rays {
-  position: absolute;
-  width: 280px;
-  height: 280px;
-  animation: rotate 30s linear infinite;
-}
+        /* Canvas for weather effects */
+        #weatherCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
 
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+        /* Card Content */
+        .card-content {
+            position: relative;
+            z-index: 3;
+            padding: 40px 32px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-.sun-rays::before, .sun-rays::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(255, 200, 100, 0.3) 10deg,
-    transparent 20deg,
-    transparent 45deg,
-    rgba(255, 200, 100, 0.3) 55deg,
-    transparent 65deg,
-    transparent 90deg,
-    rgba(255, 200, 100, 0.3) 100deg,
-    transparent 110deg,
-    transparent 135deg,
-    rgba(255, 200, 100, 0.3) 145deg,
-    transparent 155deg,
-    transparent 180deg,
-    rgba(255, 200, 100, 0.3) 190deg,
-    transparent 200deg,
-    transparent 225deg,
-    rgba(255, 200, 100, 0.3) 235deg,
-    transparent 245deg,
-    transparent 270deg,
-    rgba(255, 200, 100, 0.3) 280deg,
-    transparent 290deg,
-    transparent 315deg,
-    rgba(255, 200, 100, 0.3) 325deg,
-    transparent 335deg
-  );
-  border-radius: 50%;
-  filter: blur(8px);
-}
-.sun-rays::after {
-  animation: rotate 20s linear infinite reverse;
-  opacity: 0.6;
-}
+        .weather-icon-container {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-/* 光晕粒子 */
-.halo {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 220, 150, 0.8);
-  filter: blur(2px);
-  animation: floatHalo 6s ease-in-out infinite;
-}
-@keyframes floatHalo {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
-  50% { transform: translate(20px, -30px) scale(1.3); opacity: 1; }
-}
+        .location-section {
+            margin-top: 12px;
+        }
 
-/* 大风 */
-.wind-container {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.wind-container.active { opacity: 1; }
+        .location-name {
+            font-size: 28px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
 
-.cloud {
-  position: absolute;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(200, 210, 225, 0.7));
-  border-radius: 50px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-.cloud::before, .cloud::after {
-  content: '';
-  position: absolute;
-  background: inherit;
-  border-radius: 50%;
-}
-.cloud-1 {
-  width: 100px;
-  height: 32px;
-  top: 25%;
-  left: -100px;
-  animation: cloudMove 8s linear infinite;
-}
-.cloud-1::before { width: 50px; height: 50px; top: -25px; left: 15px; }
-.cloud-1::after { width: 35px; height: 35px; top: -15px; left: 55px; }
+        .location-sub {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+            font-weight: 400;
+        }
 
-.cloud-2 {
-  width: 80px;
-  height: 26px;
-  top: 55%;
-  left: -80px;
-  animation: cloudMove 10s linear infinite 2s;
-  opacity: 0.8;
-}
-.cloud-2::before { width: 40px; height: 40px; top: -20px; left: 12px; }
-.cloud-2::after { width: 28px; height: 28px; top: -12px; left: 45px; }
+        .temp-section {
+            margin-top: -10px;
+        }
 
-.cloud-3 {
-  width: 120px;
-  height: 36px;
-  top: 75%;
-  left: -120px;
-  animation: cloudMove 12s linear infinite 4s;
-  opacity: 0.6;
-}
-.cloud-3::before { width: 55px; height: 55px; top: -28px; left: 20px; }
-.cloud-3::after { width: 40px; height: 40px; top: -18px; left: 65px; }
+        .temperature {
+            font-size: 96px;
+            font-weight: 200;
+            color: #ffffff;
+            letter-spacing: -4px;
+            line-height: 1;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-@keyframes cloudMove {
-  from { transform: translateX(0); }
-  to { transform: translateX(550px); }
-}
+        .temperature sup {
+            font-size: 36px;
+            font-weight: 300;
+            vertical-align: super;
+            letter-spacing: 0;
+        }
 
-/* 风线 */
-.wind-line {
-  position: absolute;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-  border-radius: 2px;
-  animation: windFlow 2s linear infinite;
-}
-@keyframes windFlow {
-  0% { transform: translateX(-100px) scaleX(0.3); opacity: 0; }
-  50% { opacity: 1; transform: translateX(150px) scaleX(1); }
-  100% { transform: translateX(400px) scaleX(0.3); opacity: 0; }
-}
+        .weather-desc {
+            font-size: 18px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 8px;
+            transition: all 0.4s ease;
+        }
 
-/* 树 */
-.tree {
-  position: absolute;
-  bottom: 15%;
-  right: 15%;
-  width: 40px;
-  height: 60px;
-}
-.tree-trunk {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 25px;
-  background: linear-gradient(180deg, #6b4a2b, #4a3220);
-  border-radius: 2px;
-  transform-origin: bottom center;
-  animation: treeSway 2s ease-in-out infinite;
-}
-.tree-top {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 40px;
-  background: radial-gradient(circle at 30% 30%, #6b9b5a, #3d6b2e);
-  border-radius: 50%;
-  transform-origin: bottom center;
-  animation: treeSway 2s ease-in-out infinite;
-}
-@keyframes treeSway {
-  0%, 100% { transform: translateX(-50%) rotate(-8deg); }
-  50% { transform: translateX(-50%) rotate(8deg); }
-}
+        .weather-detail {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-/* 暴雨 */
-.rain-container {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.rain-container.active { opacity: 1; }
+        .detail-item {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 14px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            flex: 1;
+        }
 
-.raindrop {
-  position: absolute;
-  width: 2px;
-  background: linear-gradient(180deg, transparent, rgba(150, 200, 255, 0.8));
-  border-radius: 2px;
-  animation: rainFall linear infinite;
-}
-@keyframes rainFall {
-  0% { transform: translateY(-50px); opacity: 0; }
-  10% { opacity: 1; }
-  100% { transform: translateY(450px); opacity: 0; }
-}
+        .detail-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
 
-/* 闪电 */
-.lightning {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 120px;
-  opacity: 0;
-  animation: lightningFlash 5s ease-in-out infinite;
-}
-.lightning path {
-  fill: rgba(255, 255, 220, 0.95);
-  filter: drop-shadow(0 0 20px rgba(255, 255, 200, 0.8));
-}
-@keyframes lightningFlash {
-  0%, 92%, 100% { opacity: 0; }
-  93%, 95% { opacity: 1; }
-  94% { opacity: 0.3; }
-}
+        .detail-value {
+            font-size: 20px;
+            font-weight: 500;
+            color: #ffffff;
+            margin-top: 4px;
+        }
 
-/* 水洼 */
-.puddle {
-  position: absolute;
-  bottom: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  height: 30px;
-  background: radial-gradient(ellipse, rgba(100, 150, 220, 0.4), transparent 70%);
-  border-radius: 50%;
-  animation: puddleRipple 2s ease-out infinite;
-}
-@keyframes puddleRipple {
-  0% { transform: translateX(-50%) scale(0.8); opacity: 0.8; }
-  100% { transform: translateX(-50%) scale(1.2); opacity: 0; }
-}
+        /* Toggle Buttons */
+        .toggle-section {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
 
-.ripple {
-  position: absolute;
-  bottom: 10%;
-  border: 1px solid rgba(150, 200, 255, 0.6);
-  border-radius: 50%;
-  animation: rippleExpand 1.5s ease-out infinite;
-}
-@keyframes rippleExpand {
-  0% { width: 0; height: 0; opacity: 1; }
-  100% { width: 40px; height: 10px; opacity: 0; }
-}
+        .toggle-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 14px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+        }
 
-/* 暴雪 */
-.snow-container {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.snow-container.active { opacity: 1; }
+        .toggle-btn:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
 
-.snowflake {
-  position: absolute;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  animation: snowFall linear infinite;
-  text-shadow: 0 0 8px rgba(200, 230, 255, 0.8);
-}
-@keyframes snowFall {
-  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-  10% { opacity: 1; }
-  100% { transform: translateY(450px) rotate(360deg); opacity: 0.5; }
-}
+        .toggle-btn.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                0 0 1px rgba(255, 255, 255, 0.1);
+        }
 
-/* 雪堆 */
-.snow-pile {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(180deg, rgba(230, 240, 250, 0.9), rgba(200, 220, 240, 0.7));
-  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-  box-shadow: 0 -4px 20px rgba(200, 220, 240, 0.3);
-}
-.snow-pile::before {
-  content: '';
-  position: absolute;
-  bottom: 40px;
-  left: 20%;
-  width: 80px;
-  height: 40px;
-  background: linear-gradient(180deg, rgba(240, 248, 255, 0.95), rgba(210, 225, 240, 0.8));
-  border-radius: 50%;
-}
-.snow-pile::after {
-  content: '';
-  position: absolute;
-  bottom: 30px;
-  right: 15%;
-  width: 100px;
-  height: 50px;
-  background: linear-gradient(180deg, rgba(240, 248, 255, 0.95), rgba(210, 225, 240, 0.8));
-  border-radius: 50%;
-}
+        .toggle-btn:active {
+            transform: scale(0.95);
+        }
 
-/* 温度显示 */
-.temp-section {
-  color: white;
-  margin-top: auto;
-}
-.temp-main {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.temp-value {
-  font-size: 88px;
-  font-weight: 200;
-  letter-spacing: -4px;
-  line-height: 1;
-  background: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.7));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  transition: all 0.6s ease;
-}
-.temp-unit {
-  font-size: 36px;
-  font-weight: 300;
-  margin-top: 12px;
-  color: rgba(255, 255, 255, 0.6);
-}
-.condition {
-  font-size: 20px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 4px;
-  transition: all 0.5s ease;
-}
-.temp-range {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 500;
-}
+        /* Haptic feedback animation */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
 
-/* 详情条 */
-.details {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.detail-item {
-  text-align: center;
-  color: white;
-  flex: 1;
-}
-.detail-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-.detail-value {
-  font-size: 15px;
-  font-weight: 600;
-}
+        .weather-icon-container.animate {
+            animation: pulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-/* 切换按钮 */
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-top: 24px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.ctrl-btn {
-  flex: 1;
-  padding: 10px 4px;
-  background: transparent;
-  border: none;
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  font-family: inherit;
-}
-.ctrl-btn .icon {
-  font-size: 18px;
-}
-.ctrl-btn:hover {
-  color: rgba(255, 255, 255, 0.9);
-}
-.ctrl-btn.active {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
-  color: white;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-}
-</style>
+        /* Lightning flash */
+        .lightning-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            border-radius: 32px;
+        }
+
+        .lightning-flash.flash {
+            animation: flash 0.15s ease-out;
+        }
+
+        @keyframes flash {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            40% { opacity: 0; }
+            60% { opacity: 0.6; }
+            80% { opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        /* Subtle floating animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .weather-icon-container {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* Glow effect */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .glow-orb.sunny {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 149, 0, 0.5) 0%, transparent 70%);
+            top: 30px;
+            right: 40px;
+        }
+
+        .glow-orb.windy {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(100, 210, 255, 0.4) 0%, transparent 70%);
+            top: 40px;
+            right: 30px;
+        }
+
+        .glow-orb.rainy {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(80, 100, 200, 0.4) 0%, transparent 70%);
+            top: 30px;
+            right: 50px;
+        }
+
+        .glow-orb.snowy {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(180, 210, 255, 0.35) 0%, transparent 70%);
+            top: 40px;
+            right: 40px;
+        }
+
+        /* Reflection line */
+        .card-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20%;
+            right: 20%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+    </style>
 </head>
-<body data-weather="sunny">
-
-<div class="bg-glow g1"></div>
-<div class="bg-glow g2"></div>
-
-<div class="card">
-  <!-- 动态背景 -->
-  <div class="weather-bg bg-sunny active"></div>
-  <div class="weather-bg bg-windy"></div>
-  <div class="weather-bg bg-rainy"></div>
-  <div class="weather-bg bg-snowy"></div>
-
-  <div class="content">
-    <!-- 顶部 -->
-    <div class="top-info">
-      <div>
-        <div class="location">上海市</div>
-        <div class="date">星期三 · 7月8日</div>
-      </div>
-      <div class="menu-btn"></div>
+<body>
+    <div class="ambient-bg sunny" id="ambientBg"></div>
+    
+    <div class="weather-card">
+        <div class="card-glass sunny" id="cardGlass"></div>
+        <div class="glow-orb sunny" id="glowOrb"></div>
+        <div class="lightning-flash" id="lightningFlash"></div>
+        <canvas id="weatherCanvas"></canvas>
+        
+        <div class="card-content">
+            <div>
+                <div class="weather-icon-container" id="weatherIcon">☀️</div>
+                <div class="location-section">
+                    <div class="location-name">Shanghai</div>
+                    <div class="location-sub">浦东新区 · 当前天气</div>
+                </div>
+            </div>
+            
+            <div class="temp-section">
+                <div class="temperature" id="temperature">28<sup>°</sup></div>
+                <div class="weather-desc" id="weatherDesc">晴朗</div>
+                <div class="weather-detail">
+                    <div class="detail-item">
+                        <div class="detail-label">湿度</div>
+                        <div class="detail-value" id="humidity">45%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">风速</div>
+                        <div class="detail-value" id="windSpeed">12 km/h</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">体感</div>
+                        <div class="detail-value" id="feelsLike">26°</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="toggle-section">
+                <button class="toggle-btn active" data-weather="sunny" onclick="switchWeather('sunny')">☀️ 晴天</button>
+                <button class="toggle-btn" data-weather="windy" onclick="switchWeather('windy')">💨 大风</button>
+                <button class="toggle-btn" data-weather="rainy" onclick="switchWeather('rainy')">⛈️ 暴雨</button>
+                <button class="toggle-btn" data-weather="snowy" onclick="switchWeather('snowy')">❄️ 暴雪</button>
+            </div>
+        </div>
     </div>
 
-    <!-- 天气动画舞台 -->
-    <div class="weather-stage">
-      <!-- 晴天 -->
-      <div class="sun-container active">
-        <div class="sun-rays"></div>
-        <div class="sun"></div>
-      </div>
+    <script>
+        const canvas = document.getElementById('weatherCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentWeather = 'sunny';
+        let animationId;
+        let particles = [];
 
-      <!-- 大风 -->
-      <div class="wind-container">
-        <div class="cloud cloud-1"></div>
-        <div class="cloud cloud-2"></div>
-        <div class="cloud cloud-3"></div>
-        <div class="tree">
-          <div class="tree-top"></div>
-          <div class="tree-trunk"></div>
-        </div>
-      </div>
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+        }
 
-      <!-- 暴雨 -->
-      <div class="rain-container">
-        <svg class="lightning" viewBox="0 0 60 120">
-          <path d="M30 0 L10 60 L25 60 L15 120 L50 50 L32 50 L45 0 Z"/>
-        </svg>
-        <div class="puddle"></div>
-      </div>
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
-      <!-- 暴雪 -->
-      <div class="snow-container">
-        <div class="snow-pile"></div>
-      </div>
-    </div>
+        // Weather data
+        const weatherData = {
+            sunny: { icon: '☀️', temp: '28<sup>°</sup>', desc: '晴朗', humidity: '45%', wind: '12 km/h', feels: '26°' },
+            windy: { icon: '💨', temp: '22<sup>°</sup>', desc: '大风', humidity: '55%', wind: '48 km/h', feels: '18°' },
+            rainy: { icon: '⛈️', temp: '16<sup>°</sup>', desc: '暴雨', humidity: '92%', wind: '28 km/h', feels: '12°' },
+            snowy: { icon: '❄️', temp: '-3<sup>°</sup>', desc: '暴雪', humidity: '85%', wind: '15 km/h', feels: '-8°' }
+        };
 
-    <!-- 温度 -->
-    <div class="temp-section">
-      <div class="temp-main">
-        <div class="temp-value" id="tempValue">28</div>
-        <div class="temp-unit">°</div>
-      </div>
-      <div class="condition" id="condition">晴朗</div>
-      <div class="temp-range" id="tempRange">最高 32° · 最低 24°</div>
+        // Particle classes
+        class SunRay {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = w * 0.65 + Math.random() * 40 - 20;
+                this.y = h * 0.18 + Math.random() * 40 - 20;
+                this.length = 60 + Math.random() * 100;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 0.002 + Math.random() * 0.003;
+                this.opacity = 0.03 + Math.random() * 0.06;
+                this.width = 1 + Math.random() * 2;
+            }
+            update() {
+                this.angle += this.speed;
+                if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
+            }
+            draw() {
+                const endX = this.x + Math.cos(this.angle) * this.length;
+                const endY = this.y + Math.sin(this.angle) * this.length;
+                const gradient = ctx.createLinearGradient(this.x, this.y, endX, endY);
+                gradient.addColorStop(0, `rgba(255, 200, 50, ${this.opacity})`);
+                gradient.addColorStop(1, 'rgba(255, 200, 50, 0)');
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.width;
+                ctx.stroke();
+            }
+        }
 
-      <div class="details">
-        <div class="detail-item">
-          <div class="detail-label">体感</div>
-          <div class="detail-value" id="feelsLike">30°</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">湿度</div>
-          <div class="detail-value" id="humidity">55%</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">风速</div>
-          <div class="detail-value" id="wind">8 km/h</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">紫外线</div>
-          <div class="detail-value" id="uv">强</div>
-        </div>
-      </div>
+        class SunHalo {
+            constructor() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = w * 0.65;
+                this.y = h * 0.18;
+                this.radius = 40;
+                this.pulseSpeed = 0.02;
+                this.pulseOffset = Math.random() * Math.PI * 2;
+            }
+            update(time) {
+                this.radius = 45 + Math.sin(time * this.pulseSpeed + this.pulseOffset) * 10;
+            }
+            draw() {
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                gradient.addColorStop(0, 'rgba(255, 220, 100, 0.15)');
+                gradient.addColorStop(0.5, 'rgba(255, 180, 50, 0.06)');
+                gradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            }
+        }
 
-      <div class="controls">
-        <button class="ctrl-btn active" data-type="sunny">
-          <span class="icon">☀️</span>
-          <span>晴天</span>
-        </button>
-        <button class="ctrl-btn" data-type="windy">
-          <span class="icon">💨</span>
-          <span>大风</span>
-        </button>
-        <button class="ctrl-btn" data-type="rainy">
-          <span class="icon">🌧️</span>
-          <span>暴雨</span>
-        </button>
-        <button class="ctrl-btn" data-type="snowy">
-          <span class="icon">❄️</span>
-          <span>暴雪</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+        class WindLine {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = -50;
+                this.y = Math.random() * h;
+                this.length = 40 + Math.random() * 80;
+                this.speed = 4 + Math.random() * 6;
+                this.opacity = 0.05 + Math.random() * 0.1;
+                this.width = 0.5 + Math.random() * 1.5;
+                this.wave = Math.random() * Math.PI * 2;
+                this.waveSpeed = 0.05 + Math.random() * 0.05;
+                this.waveAmp = 2 + Math.random() * 4;
+            }
+            update() {
+                this.x += this.speed;
+                this.wave += this.waveSpeed;
+                const w = canvas.width / 2;
+                if (this.x > w + 50) this.reset();
+            }
+            draw() {
+                const waveY = this.y + Math.sin(this.wave) * this.waveAmp;
+                ctx.beginPath();
+                ctx.moveTo(this.x, waveY);
+                ctx.lineTo(this.x + this.length, waveY + Math.sin(this.wave + 1) * this.waveAmp);
+                ctx.strokeStyle = `rgba(180, 220, 255, ${this.opacity})`;
+                ctx.lineWidth = this.width;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+        }
 
-<script>
-// 天气数据
-const weatherData = {
-  sunny: { temp: 28, condition: '晴朗', range: '最高 32° · 最低 24°', feels: '30°', humidity: '55%', wind: '8 km/h', uv: '强' },
-  windy: { temp: 18, condition: '大风', range: '最高 20° · 最低 14°', feels: '15°', humidity: '62%', wind: '35 km/h', uv: '中' },
-  rainy: { temp: 14, condition: '暴雨', range: '最高 16° · 最低 12°', feels: '12°', humidity: '92%', wind: '22 km/h', uv: '弱' },
-  snowy: { temp: -5, condition: '暴雪', range: '最高 -2° · 最低 -8°', feels: '-10°', humidity: '78%', wind: '15 km/h', uv: '弱' }
-};
+        class Cloud {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = -100;
+                this.y = 30 + Math.random() * (h * 0.4);
+                this.speed = 0.8 + Math.random() * 1.5;
+                this.size = 20 + Math.random() * 30;
+                this.opacity = 0.08 + Math.random() * 0.12;
+            }
+            update() {
+                this.x += this.speed;
+                const w = canvas.width / 2;
+                if (this.x > w + 100) this.reset();
+            }
+            draw() {
+                ctx.fillStyle = `rgba(200, 220, 240, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size * 0.8, this.y - this.size * 0.2, this.size * 0.7, 0, Math.PI * 2);
+                ctx.arc(this.x - this.size * 0.6, this.y + this.size * 0.1, this.size * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
 
-// 动态生成雨滴
-function createRaindrops() {
-  const container = document.querySelector('.rain-container');
-  for (let i = 0; i < 80; i++) {
-    const drop = document.createElement('div');
-    drop.className = 'raindrop';
-    drop.style.left = Math.random() * 100 + '%';
-    drop.style.height = (15 + Math.random() * 20) + 'px';
-    drop.style.animationDuration = (0.4 + Math.random() * 0.4) + 's';
-    drop.style.animationDelay = Math.random() * 2 + 's';
-    drop.style.opacity = 0.4 + Math.random() * 0.6;
-    container.appendChild(drop);
-  }
-  // 涟漪
-  for (let i = 0; i < 5; i++) {
-    const ripple = document.createElement('div');
-    ripple.className = 'ripple';
-    ripple.style.left = (20 + Math.random() * 60) + '%';
-    ripple.style.animationDelay = Math.random() * 1.5 + 's';
-    container.appendChild(ripple);
-  }
-}
+        class Tree {
+            constructor() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = 30 + Math.random() * (w - 60);
+                this.y = h - 20;
+                this.height = 30 + Math.random() * 40;
+                this.swayAngle = 0;
+                this.swaySpeed = 0.03 + Math.random() * 0.02;
+                this.swayMax = 0.15 + Math.random() * 0.1;
+            }
+            update(time) {
+                this.swayAngle = Math.sin(time * this.swaySpeed) * this.swayMax;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.swayAngle);
+                
+                // Trunk
+                ctx.fillStyle = 'rgba(100, 70, 40, 0.3)';
+                ctx.fillRect(-2, -this.height, 4, this.height);
+                
+                // Leaves
+                ctx.fillStyle = 'rgba(60, 120, 60, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(0, -this.height - 5, 12, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
 
-// 动态生成雪花
-function createSnowflakes() {
-  const container = document.querySelector('.snow-container');
-  const flakes = ['❄', '❅', '❆', '✦'];
-  for (let i = 0; i < 50; i++) {
-    const flake = document.createElement('div');
-    flake.className = 'snowflake';
-    flake.textContent = flakes[Math.floor(Math.random() * flakes.length)];
-    flake.style.left = Math.random() * 100 + '%';
-    flake.style.fontSize = (10 + Math.random() * 14) + 'px';
-    flake.style.animationDuration = (4 + Math.random() * 4) + 's';
-    flake.style.animationDelay = Math.random() * 5 + 's';
-    flake.style.opacity = 0.5 + Math.random() * 0.5;
-    container.appendChild(flake);
-  }
-}
+        class Raindrop {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = Math.random() * w;
+                this.y = -10 - Math.random() * 50;
+                this.speed = 12 + Math.random() * 8;
+                this.length = 15 + Math.random() * 20;
+                this.opacity = 0.2 + Math.random() * 0.3;
+                this.width = 0.5 + Math.random() * 1;
+                this.wind = -2 + Math.random() * -1;
+            }
+            update() {
+                this.y += this.speed;
+                this.x += this.wind;
+                const h = canvas.height / 2;
+                if (this.y > h - 10) {
+                    this.createSplash();
+                    this.reset();
+                }
+            }
+            createSplash() {
+                // Splash particles stored globally
+                const h = canvas.height / 2;
+                for (let i = 0; i < 3; i++) {
+                    splashes.push(new Splash(this.x, h - 10));
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + this.wind * 0.5, this.y + this.length);
+                ctx.strokeStyle = `rgba(150, 180, 255, ${this.opacity})`;
+                ctx.lineWidth = this.width;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+        }
 
-// 生成风线
-function createWindLines() {
-  const container = document.querySelector('.wind-container');
-  for (let i = 0; i < 8; i++) {
-    const line = document.createElement('div');
-    line.className = 'wind-line';
-    line.style.top = (15 + Math.random() * 70) + '%';
-    line.style.width = (60 + Math.random() * 80) + 'px';
-    line.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
-    line.style.animationDelay = Math.random() * 2 + 's';
-    container.appendChild(line);
-  }
-}
+        class Splash {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = -2 - Math.random() * 3;
+                this.life = 1;
+                this.decay = 0.05 + Math.random() * 0.03;
+                this.size = 1 + Math.random() * 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2;
+                this.life -= this.decay;
+            }
+            draw() {
+                if (this.life <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(150, 180, 255, ${this.life * 0.4})`;
+                ctx.fill();
+            }
+        }
 
-// 生成光晕粒子
-function createHalos() {
-  const container = document.querySelector('.sun-container');
-  for (let i = 0; i < 8; i++) {
-    const halo = document.createElement('div');
-    halo.className = 'halo';
-    halo.style.top = (20 + Math.random() * 60) + '%';
-    halo.style.left = (20 + Math.random() * 60) + '%';
-    halo.style.animationDelay = Math.random() * 6 + 's';
-    halo.style.animationDuration = (5 + Math.random() * 3) + 's';
-    container.appendChild(halo);
-  }
-}
+        class Puddle {
+            constructor() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.x = Math.random() * w;
+                this.y = h - 8 - Math.random() * 4;
+                this.radius = 0;
+                this.maxRadius = 3 + Math.random() * 5;
+                this.speed = 0.1 + Math.random() * 0.1;
+                this.opacity = 0.15;
+            }
+            update() {
+                if (this.radius < this.maxRadius) {
+                    this.radius += this.speed;
+                } else {
+                    this.opacity -= 0.003;
+                }
+            }
+            draw() {
+                if (this.opacity <= 0) return;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.3, 0, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 150, 220, ${this.opacity})`;
+                ctx.fill();
+                // Ripple
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.3, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(150, 180, 255, ${this.opacity * 0.5})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+            isDead() {
+                return this.opacity <= 0;
+            }
+        }
 
-// 初始化
-createRaindrops();
-createSnowflakes();
-createWindLines();
-createHalos();
+        class Snowflake {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                const w = canvas.width / 2;
+                this.x = Math.random() * w;
+                this.y = -10 - Math.random() * 30;
+                this.speed = 1 + Math.random() * 2;
+                this.size = 1.5 + Math.random() * 3.5;
+                this.opacity = 0.4 + Math.random() * 0.5;
+                this.wobble = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = 0.02 + Math.random() * 0.03;
+                this.wobbleAmp = 0.5 + Math.random() * 1;
+            }
+            update() {
+                this.y += this.speed;
+                this.wobble += this.wobbleSpeed;
+                this.x += Math.sin(this.wobble) * this.wobbleAmp;
+                const h = canvas.height / 2;
+                if (this.y > h - 20) {
+                    this.y = h - 20 + Math.random() * 10;
+                    this.speed = 0;
+                    this.opacity -= 0.005;
+                }
+            }
+            draw() {
+                if (this.opacity <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(230, 240, 255, ${this.opacity})`;
+                ctx.fill();
+                
+                // Sparkle
+                if (Math.random() < 0.01) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
+                    ctx.fill();
+                }
+            }
+        }
 
-// 切换天气
-document.querySelectorAll('.ctrl-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const type = btn.dataset.type;
+        class SnowAccumulation {
+            constructor() {
+                const w = canvas.width / 2;
+                const h = canvas.height / 2;
+                this.segments = [];
+                for (let i = 0; i < w / 4; i++) {
+                    this.segments.push({
+                        x: i * 4,
+                        height: 0,
+                        maxHeight: 8 + Math.random() * 12,
+                        growSpeed: 0.01 + Math.random() * 0.02
+                    });
+                }
+            }
+            update() {
+                this.segments.forEach(seg => {
+                    if (seg.height < seg.maxHeight) {
+                        seg.height += seg.growSpeed;
+                    }
+                });
+            }
+            draw() {
+                const h = canvas.height / 2;
+                ctx.beginPath();
+                ctx.moveTo(0, h);
+                this.segments.forEach(seg => {
+                    ctx.lineTo(seg.x, h - seg.height);
+                });
+                ctx.lineTo(canvas.width / 2, h);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(220, 235, 255, 0.12)';
+                ctx.fill();
+            }
+        }
 
-    // 更新按钮状态
-    document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+        let splashes = [];
+        let puddles = [];
+        let sunRays = [];
+        let sunHalos = [];
+        let windLines = [];
+        let clouds = [];
+        let trees = [];
+        let raindrops = [];
+        let snowflakes = [];
+        let snowAccumulation;
+        let time = 0;
 
-    // 更新背景
-    document.body.dataset.weather = type;
-    document.querySelectorAll('.weather-bg').forEach(bg => bg.classList.remove('active'));
-    document.querySelector('.bg-' + type).classList.add('active');
+        function initWeather(type) {
+            particles = [];
+            splashes = [];
+            puddles = [];
+            sunRays = [];
+            sunHalos = [];
+            windLines = [];
+            clouds = [];
+            trees = [];
+            raindrops = [];
+            snowflakes = [];
 
-    // 更新动画容器
-    const containers = {
-      sunny: '.sun-container',
-      windy: '.wind-container',
-      rainy: '.rain-container',
-      snowy: '.snow-container'
-    };
-    document.querySelectorAll('.sun-container, .wind-container, .rain-container, .snow-container')
-      .forEach(c => c.classList.remove('active'));
-    document.querySelector(containers[type]).classList.add('active');
+            switch(type) {
+                case 'sunny':
+                    for (let i = 0; i < 20; i++) sunRays.push(new SunRay());
+                    for (let i = 0; i < 3; i++) sunHalos.push(new SunHalo());
+                    break;
+                case 'windy':
+                    for (let i = 0; i < 15; i++) windLines.push(new WindLine());
+                    for (let i = 0; i < 4; i++) clouds.push(new Cloud());
+                    for (let i = 0; i < 5; i++) trees.push(new Tree());
+                    break;
+                case 'rainy':
+                    for (let i = 0; i < 80; i++) raindrops.push(new Raindrop());
+                    for (let i = 0; i < 5; i++) clouds.push(new Cloud());
+                    break;
+                case 'snowy':
+                    for (let i = 0; i < 60; i++) snowflakes.push(new Snowflake());
+                    snowAccumulation = new SnowAccumulation();
+                    break;
+            }
+        }
 
-    // 更新数据（带数字动画）
-    const data = weatherData[type];
-    animateValue('tempValue', parseInt(document.getElementById('tempValue').textContent), data.temp, 600);
-    document.getElementById('condition').textContent = data.condition;
-    document.getElementById('tempRange').textContent = data.range;
-    document.getElementById('feelsLike').textContent = data.feels;
-    document.getElementById('humidity').textContent = data.humidity;
-    document.getElementById('wind').textContent = data.wind;
-    document.getElementById('uv').textContent = data.uv;
-  });
-});
+        let lastLightning = 0;
 
-// 数字动画
-function animateValue(id, start, end, duration) {
-  const el = document.getElementById(id);
-  const range = end - start;
-  const startTime = performance.now();
+        function animate() {
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+            ctx.clearRect(0, 0, w, h);
+            time++;
 
-  function update(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-    const current = Math.round(start + range * eased);
-    el.textContent = current;
-    if (progress < 1) requestAnimationFrame(update);
-  }
-  requestAnimationFrame(update);
-}
-</script>
+            switch(currentWeather) {
+                case 'sunny':
+                    sunHalos.forEach(halo => { halo.update(time); halo.draw(); });
+                    sunRays.forEach(ray => { ray.update(); ray.draw(); });
+                    break;
+                case 'windy':
+                    windLines.forEach(line => { line.update(); line.draw(); });
+                    clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
+                    trees.forEach(tree => { tree.update(time); tree.draw(); });
+                    break;
+                case 'rainy':
+                    raindrops.forEach(drop => { drop.update(); drop.draw(); });
+                    splashes.forEach(s => { s.update(); s.draw(); });
+                    splashes = splashes.filter(s => s.life > 0);
+                    clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
+                    
+                    // Lightning effect
+                    if (time - lastLightning > 180 && Math.random() < 0.008) {
+                        triggerLightning();
+                        lastLightning = time;
+                    }
+                    
+                    // Create puddles
+                    if (Math.random() < 0.03) {
+                        puddles.push(new Puddle());
+                    }
+                    puddles.forEach(p => { p.update(); p.draw(); });
+                    puddles = puddles.filter(p => !p.isDead());
+                    break;
+                case 'snowy':
+                    snowflakes.forEach(flake => { flake.update(); flake.draw(); });
+                    if (snowAccumulation) { snowAccumulation.update(); snowAccumulation.draw(); }
+                    break;
+            }
 
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function triggerLightning() {
+            const flash = document.getElementById('lightningFlash');
+            flash.classList.remove('flash');
+            void flash.offsetWidth;
+            flash.classList.add('flash');
+            
+            // Draw lightning bolt on canvas
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+            let x = w * 0.3 + Math.random() * w * 0.4;
+            let y = 0;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            while (y < h * 0.7) {
+                x += (Math.random() - 0.5) * 30;
+                y += 10 + Math.random() * 20;
+                ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+        }
+
+        function switchWeather(type) {
+            if (type === currentWeather) return;
+            currentWeather = type;
+
+            // Update UI
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-weather="${type}"]`).classList.add('active');
+
+            const data = weatherData[type];
+            document.getElementById('weatherIcon').textContent = data.icon;
+            document.getElementById('temperature').innerHTML = data.temp;
+            document.getElementById('weatherDesc').textContent = data.desc;
+            document.getElementById('humidity').textContent = data.humidity;
+            document.getElementById('windSpeed').textContent = data.wind;
+            document.getElementById('feelsLike').textContent = data.feels;
+
+            // Animate icon
+            const icon = document.getElementById('weatherIcon');
+            icon.classList.remove('animate');
+            void icon.offsetWidth;
+            icon.classList.add('animate');
+
+            // Update backgrounds
+            const bg = document.getElementById('ambientBg');
+            const glass = document.getElementById('cardGlass');
+            const glow = document.getElementById('glowOrb');
+            
+            bg.className = `ambient-bg ${type}`;
+            glass.className = `card-glass ${type}`;
+            glow.className = `glow-orb ${type}`;
+
+            // Initialize particles
+            initWeather(type);
+        }
+
+        // Start
+        initWeather('sunny');
+        animate();
+    </script>
 </body>
 </html>
