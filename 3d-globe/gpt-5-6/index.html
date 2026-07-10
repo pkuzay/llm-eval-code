@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 全球数据可视化地球仪</title>
+
+  <!--
+    单文件 Three.js Demo
+    - 依赖和纹理通过 CDN 加载
+    - 若浏览器限制 file:// 下的模块请求，请运行：
+      python3 -m http.server 8000
+      然后访问 http://localhost:8000/
+  -->
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel-bg: rgba(7, 15, 31, 0.74);
+      --panel-border: rgba(126, 219, 255, 0.22);
+      --text-main: #eef9ff;
+      --text-muted: #8faac0;
+      --accent: #56e6ff;
+      --accent-2: #a76dff;
+      --danger: #ff5f8f;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 45%, #0b2343 0%, #050b17 36%, #01040a 74%);
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text-main);
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    #app,
+    #globe-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #globe-canvas {
+      display: block;
+      outline: none;
+      cursor: grab;
+    }
+
+    #globe-canvas:active {
+      cursor: grabbing;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 10;
+      top: 24px;
+      left: 28px;
+      pointer-events: none;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .eyebrow {
+      margin-bottom: 7px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 42px);
+      line-height: 1.05;
+      font-weight: 760;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin-top: 9px;
+      max-width: 520px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 12px;
+      padding: 7px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 999px;
+      background: rgba(2, 10, 22, 0.48);
+      color: #bad0df;
+      font-size: 11px;
+      backdrop-filter: blur(10px);
+    }
+
+    .demo-badge::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #72f5c5;
+      box-shadow: 0 0 12px #72f5c5;
+      content: "";
+    }
+
+    .panel {
+      position: fixed;
+      z-index: 20;
+      top: 22px;
+      right: 22px;
+      width: min(340px, calc(100vw - 32px));
+      max-height: calc(100vh - 44px);
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(15, 34, 58, 0.8), rgba(4, 12, 27, 0.78));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px) saturate(130%);
+    }
+
+    .panel::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .panel-title strong {
+      font-size: 15px;
+      letter-spacing: 0.02em;
+    }
+
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #8ffbd3;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+    }
+
+    .live::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+      content: "";
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      50% {
+        opacity: 0.35;
+        transform: scale(0.72);
+      }
+    }
+
+    .section {
+      padding: 15px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .section:first-of-type {
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 9px;
+      color: #b9cddd;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .value-chip {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(86, 230, 255, 0.1);
+      color: var(--accent);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 11px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.055);
+      color: white;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: rgba(86, 230, 255, 0.5);
+      box-shadow: 0 0 0 3px rgba(86, 230, 255, 0.08);
+    }
+
+    option {
+      color: #0b1423;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      display: grid;
+      width: 42px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(86, 230, 255, 0.25);
+      border-radius: 11px;
+      background: rgba(86, 230, 255, 0.08);
+      color: var(--accent);
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .icon-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(86, 230, 255, 0.16);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      padding-left: 52px;
+      color: #678095;
+      font-size: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .switch-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #b7c9d8;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .switch input {
+      display: none;
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      transition: 180ms ease;
+    }
+
+    .toggle::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #9bb0c1;
+      content: "";
+      transition: 180ms ease;
+    }
+
+    .switch input:checked + .toggle {
+      background: linear-gradient(90deg, #247fac, #7657d6);
+      box-shadow: 0 0 18px rgba(86, 230, 255, 0.16);
+    }
+
+    .switch input:checked + .toggle::after {
+      left: 19px;
+      background: white;
+    }
+
+    .legend {
+      height: 8px;
+      margin-top: 8px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #122d58, #00b5ca 52%, #ff507d);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      color: #6f879a;
+      font-size: 9px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .stat-card {
+      min-width: 0;
+      padding: 10px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.035);
+      text-align: center;
+    }
+
+    .stat-card b {
+      display: block;
+      overflow: hidden;
+      color: white;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+      text-overflow: ellipsis;
+    }
+
+    .stat-card span {
+      display: block;
+      margin-top: 3px;
+      color: #71899d;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+    }
+
+    .hint {
+      margin: 0;
+      color: #7890a5;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    #tooltip {
+      position: fixed;
+      z-index: 40;
+      display: none;
+      min-width: 170px;
+      max-width: 250px;
+      padding: 10px 12px;
+      border: 1px solid rgba(108, 226, 255, 0.28);
+      border-radius: 10px;
+      background: rgba(4, 12, 25, 0.9);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      backdrop-filter: blur(12px);
+    }
+
+    #tooltip strong {
+      display: block;
+      margin-bottom: 5px;
+      color: white;
+      font-size: 12px;
+    }
+
+    #tooltip span {
+      color: #94acbf;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    #city-popup {
+      position: fixed;
+      z-index: 30;
+      left: 28px;
+      bottom: 26px;
+      display: none;
+      width: min(330px, calc(100vw - 56px));
+      padding: 16px;
+      border: 1px solid rgba(126, 219, 255, 0.25);
+      border-radius: 16px;
+      background: rgba(5, 15, 31, 0.84);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .popup-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .popup-kicker {
+      color: var(--accent);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    #popup-name {
+      margin: 4px 0 2px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    #popup-country {
+      color: #7892a6;
+      font-size: 11px;
+    }
+
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      color: #b9cbd9;
+      cursor: pointer;
+    }
+
+    .popup-metric {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .popup-metric span {
+      color: #7890a4;
+      font-size: 10px;
+    }
+
+    .popup-metric b {
+      color: white;
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #popup-desc {
+      margin: 12px 0 0;
+      color: #9bb1c2;
+      font-size: 11px;
+      line-height: 1.65;
+    }
+
+    #loading {
+      position: fixed;
+      z-index: 100;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, rgba(11, 36, 68, 0.98), rgba(1, 4, 10, 0.99) 68%);
+      transition: opacity 500ms ease, visibility 500ms ease;
+    }
+
+    #loading.hidden {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .loader-inner {
+      width: min(360px, calc(100vw - 60px));
+      text-align: center;
+    }
+
+    .loader-orbit {
+      position: relative;
+      width: 74px;
+      height: 74px;
+      margin: 0 auto 20px;
+      border: 1px solid rgba(86, 230, 255, 0.22);
+      border-radius: 50%;
+    }
+
+    .loader-orbit::before {
+      position: absolute;
+      inset: 13px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, #55dcff, #1463a3 45%, #06284d 74%);
+      box-shadow: 0 0 32px rgba(55, 193, 255, 0.35);
+      content: "";
+    }
+
+    .loader-orbit::after {
+      position: absolute;
+      top: 50%;
+      left: -7px;
+      width: 86px;
+      height: 20px;
+      border: 1px solid rgba(167, 109, 255, 0.7);
+      border-radius: 50%;
+      content: "";
+      transform: translateY(-50%) rotate(-20deg);
+      animation: spin 1.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: translateY(-50%) rotate(340deg);
+      }
+    }
+
+    #loading-text {
+      margin-bottom: 10px;
+      color: #b9d5e7;
+      font-size: 12px;
+    }
+
+    .loading-bar {
+      height: 3px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .loading-bar span {
+      display: block;
+      width: 32%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+      animation: loading-slide 1.3s ease-in-out infinite;
+    }
+
+    @keyframes loading-slide {
+      from {
+        transform: translateX(-120%);
+      }
+      to {
+        transform: translateX(420%);
+      }
+    }
+
+    .error-toast {
+      position: fixed;
+      z-index: 120;
+      left: 50%;
+      bottom: 22px;
+      display: none;
+      max-width: min(620px, calc(100vw - 32px));
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 117, 143, 0.3);
+      border-radius: 11px;
+      background: rgba(55, 10, 25, 0.9);
+      color: #ffd7df;
+      font-size: 11px;
+      line-height: 1.6;
+      transform: translateX(-50%);
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        top: 18px;
+        left: 18px;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .panel {
+        top: auto;
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        width: auto;
+        max-height: 42vh;
+        padding: 14px;
+      }
+
+      .panel-title,
+      .section--toggles,
+      .section--stats,
+      .hint {
+        display: none;
+      }
+
+      .section {
+        padding: 10px 0;
+      }
+
+      #city-popup {
+        left: 14px;
+        bottom: calc(42vh + 24px);
+        width: calc(100vw - 28px);
+      }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/",
+        "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm",
+        "d3-geo": "https://cdn.jsdelivr.net/npm/d3-geo@3/+esm"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div id="app">
+    <canvas id="globe-canvas" aria-label="交互式 3D 数据地球仪"></canvas>
+
+    <header class="topbar">
+      <div class="eyebrow">Global Intelligence Map</div>
+      <h1>全球数据脉动</h1>
+      <div class="subtitle">
+        拖拽旋转、滚轮缩放；点击城市查看指标，悬停航线查看航班信息。
+      </div>
+      <div class="demo-badge">演示数据 · 可替换为真实 API</div>
+    </header>
+
+    <aside class="panel" aria-label="数据控制面板">
+      <div class="panel-title">
+        <strong>数据控制台</strong>
+        <span class="live">LIVE</span>
+      </div>
+
+      <section class="section">
+        <div class="label-row">
+          <span>数据指标</span>
+          <span class="value-chip" id="metric-unit">万亿美元</span>
+        </div>
+        <select id="metric-select">
+          <option value="gdp">GDP</option>
+          <option value="population">人口</option>
+          <option value="flights">航班量</option>
+        </select>
+      </section>
+
+      <section class="section">
+        <div class="label-row">
+          <span>时间轴</span>
+          <span class="value-chip" id="year-label">2026</span>
+        </div>
+        <div class="timeline-row">
+          <button class="icon-btn" id="play-btn" type="button" aria-label="播放时间轴">▶</button>
+          <input id="year-range" type="range" min="2018" max="2026" value="2026" step="1" />
+        </div>
+        <div class="ticks">
+          <span>2018</span>
+          <span>2020</span>
+          <span>2022</span>
+          <span>2024</span>
+          <span>2026</span>
+        </div>
+      </section>
+
+      <section class="section section--toggles">
+        <div class="label-row">
+          <span>图层与动画</span>
+        </div>
+        <div class="switch-list">
+          <label class="switch">
+            <span>地球自转</span>
+            <input id="toggle-rotation" type="checkbox" checked />
+            <span class="toggle"></span>
+          </label>
+          <label class="switch">
+            <span>国家热力层</span>
+            <input id="toggle-heat" type="checkbox" checked />
+            <span class="toggle"></span>
+          </label>
+          <label class="switch">
+            <span>航线与流动粒子</span>
+            <input id="toggle-routes" type="checkbox" checked />
+            <span class="toggle"></span>
+          </label>
+          <label class="switch">
+            <span>云层</span>
+            <input id="toggle-clouds" type="checkbox" checked />
+            <span class="toggle"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="label-row">
+          <span>国家热力图例</span>
+          <span id="legend-metric">GDP 强度</span>
+        </div>
+        <div class="legend"></div>
+        <div class="legend-labels">
+          <span>低</span>
+          <span>中</span>
+          <span>高</span>
+        </div>
+      </section>
+
+      <section class="section section--stats">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <b id="stat-cities">12</b>
+            <span>城市节点</span>
+          </div>
+          <div class="stat-card">
+            <b id="stat-routes">16</b>
+            <span>活跃航线</span>
+          </div>
+          <div class="stat-card">
+            <b id="stat-value">—</b>
+            <span id="stat-label">总量</span>
+          </div>
+        </div>
+      </section>
+
+      <p class="hint">
+        热力值和城市指标为模拟数据。接入真实后端时，只需替换
+        <code>cities</code>、<code>routes</code> 与国家指标函数。
+      </p>
+    </aside>
+
+    <div id="tooltip" role="tooltip">
+      <strong id="tooltip-title"></strong>
+      <span id="tooltip-body"></span>
+    </div>
+
+    <section id="city-popup" aria-live="polite">
+      <div class="popup-head">
+        <div>
+          <div class="popup-kicker">City Intelligence</div>
+          <h2 id="popup-name"></h2>
+          <div id="popup-country"></div>
+        </div>
+        <button class="close-btn" id="popup-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="popup-metric">
+        <span id="popup-metric-label">GDP</span>
+        <b id="popup-metric-value"></b>
+      </div>
+      <p id="popup-desc"></p>
+    </section>
+
+    <div id="loading">
+      <div class="loader-inner">
+        <div class="loader-orbit"></div>
+        <div id="loading-text">正在加载地球纹理与地理边界…</div>
+        <div class="loading-bar"><span></span></div>
+      </div>
+    </div>
+
+    <div class="error-toast" id="error-toast"></div>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { feature } from "topojson-client";
+    import { geoEquirectangular, geoPath } from "d3-geo";
+
+    // -------------------------------------------------------------------------
+    // 1. 配置与演示数据
+    // -------------------------------------------------------------------------
+
+    const CONFIG = {
+      earthRadius: 1,
+      autoRotateSpeed: 0.00062,
+      textureBase:
+        "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/textures/planets/",
+      countryTopology:
+        "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json",
+    };
+
+    const METRICS = {
+      gdp: {
+        label: "GDP",
+        unit: "万亿美元",
+        shortUnit: "T USD",
+        decimals: 2,
+        countryLabel: "GDP 强度",
+        growth: 0.034,
+      },
+      population: {
+        label: "人口",
+        unit: "百万人",
+        shortUnit: "M",
+        decimals: 1,
+        countryLabel: "人口强度",
+        growth: 0.011,
+      },
+      flights: {
+        label: "航班量",
+        unit: "每日班次",
+        shortUnit: "班/日",
+        decimals: 0,
+        countryLabel: "航班活跃度",
+        growth: 0.052,
+      },
+    };
+
+    const cities = [
+      {
+        id: "shanghai",
+        name: "上海",
+        country: "中国",
+        lat: 31.2304,
+        lon: 121.4737,
+        gdp: 0.68,
+        population: 24.9,
+        flights: 1950,
+        description: "亚洲重要金融、航运与科技枢纽，拥有高密度国际航空连接。",
+      },
+      {
+        id: "beijing",
+        name: "北京",
+        country: "中国",
+        lat: 39.9042,
+        lon: 116.4074,
+        gdp: 0.66,
+        population: 21.9,
+        flights: 1720,
+        description: "国家级政治、文化与科技创新中心，航空网络覆盖全球主要城市。",
+      },
+      {
+        id: "tokyo",
+        name: "东京",
+        country: "日本",
+        lat: 35.6762,
+        lon: 139.6503,
+        gdp: 2.08,
+        population: 37.1,
+        flights: 2120,
+        description: "全球规模最大的都市经济圈之一，也是东北亚航空网络核心节点。",
+      },
+      {
+        id: "singapore",
+        name: "新加坡",
+        country: "新加坡",
+        lat: 1.3521,
+        lon: 103.8198,
+        gdp: 0.55,
+        population: 5.9,
+        flights: 1480,
+        description: "连接东南亚与全球市场的金融、港口和国际中转航空中心。",
+      },
+      {
+        id: "dubai",
+        name: "迪拜",
+        country: "阿联酋",
+        lat: 25.2048,
+        lon: 55.2708,
+        gdp: 0.18,
+        population: 3.8,
+        flights: 1680,
+        description: "横跨欧亚非的重要航空中转点，国际旅客与物流流量高度集中。",
+      },
+      {
+        id: "london",
+        name: "伦敦",
+        country: "英国",
+        lat: 51.5072,
+        lon: -0.1276,
+        gdp: 1.15,
+        population: 14.9,
+        flights: 2250,
+        description: "欧洲领先的金融中心和国际航空门户，跨洲联系密度极高。",
+      },
+      {
+        id: "paris",
+        name: "巴黎",
+        country: "法国",
+        lat: 48.8566,
+        lon: 2.3522,
+        gdp: 0.93,
+        population: 11.2,
+        flights: 1900,
+        description: "欧洲文化、商业与旅游中心，形成辐射欧洲和非洲的航线网络。",
+      },
+      {
+        id: "new-york",
+        name: "纽约",
+        country: "美国",
+        lat: 40.7128,
+        lon: -74.006,
+        gdp: 2.30,
+        population: 19.5,
+        flights: 2450,
+        description: "全球金融与媒体中心，北美最重要的国际航空门户之一。",
+      },
+      {
+        id: "los-angeles",
+        name: "洛杉矶",
+        country: "美国",
+        lat: 34.0522,
+        lon: -118.2437,
+        gdp: 1.30,
+        population: 12.9,
+        flights: 2180,
+        description: "连接环太平洋地区的关键城市，拥有强大的娱乐与贸易产业。",
+      },
+      {
+        id: "sao-paulo",
+        name: "圣保罗",
+        country: "巴西",
+        lat: -23.5505,
+        lon: -46.6333,
+        gdp: 0.55,
+        population: 22.6,
+        flights: 1350,
+        description: "拉丁美洲最大的商业都会之一，是南美洲航空和资本流动枢纽。",
+      },
+      {
+        id: "johannesburg",
+        name: "约翰内斯堡",
+        country: "南非",
+        lat: -26.2041,
+        lon: 28.0473,
+        gdp: 0.13,
+        population: 6.2,
+        flights: 780,
+        description: "南部非洲重要的金融、矿业服务和国际航空中心。",
+      },
+      {
+        id: "sydney",
+        name: "悉尼",
+        country: "澳大利亚",
+        lat: -33.8688,
+        lon: 151.2093,
+        gdp: 0.46,
+        population: 5.3,
+        flights: 1160,
+        description: "大洋洲主要金融与国际交通门户，连接亚太和美洲市场。",
+      },
+    ];
+
+    const routes = [
+      ["shanghai", "tokyo", "东亚快线", 42, "2h 50m"],
+      ["shanghai", "singapore", "东南亚商务线", 28, "5h 20m"],
+      ["beijing", "london", "欧亚干线", 16, "11h 10m"],
+      ["tokyo", "los-angeles", "太平洋航线", 24, "10h 05m"],
+      ["tokyo", "sydney", "亚太南向线", 18, "9h 35m"],
+      ["singapore", "dubai", "亚洲—中东线", 22, "7h 20m"],
+      ["singapore", "sydney", "南十字航线", 16, "7h 45m"],
+      ["dubai", "london", "中东—欧洲线", 35, "7h 40m"],
+      ["dubai", "johannesburg", "非洲门户线", 14, "8h 10m"],
+      ["london", "new-york", "北大西洋航线", 54, "7h 55m"],
+      ["london", "paris", "欧洲城市快线", 46, "1h 15m"],
+      ["paris", "sao-paulo", "欧—南美航线", 12, "11h 45m"],
+      ["new-york", "los-angeles", "美国横贯线", 62, "6h 05m"],
+      ["new-york", "sao-paulo", "美洲南北线", 18, "9h 35m"],
+      ["los-angeles", "sydney", "南太平洋航线", 12, "15h 10m"],
+      ["sao-paulo", "johannesburg", "南大西洋航线", 7, "9h 00m"],
+    ].map(([from, to, name, dailyFlights, duration], index) => ({
+      id: `route-${index}`,
+      from,
+      to,
+      name,
+      dailyFlights,
+      duration,
+    }));
+
+    const cityById = new Map(cities.map((city) => [city.id, city]));
+
+    // 重点国家的演示基线。其他国家使用稳定哈希生成，保证切换年份时平滑变化。
+    const countryProfiles = {
+      "840": { gdp: 1.0, population: 0.36, flights: 0.92 }, // USA
+      "156": { gdp: 0.82, population: 1.0, flights: 0.78 }, // China
+      "392": { gdp: 0.25, population: 0.18, flights: 0.72 }, // Japan
+      "276": { gdp: 0.22, population: 0.12, flights: 0.60 }, // Germany
+      "356": { gdp: 0.18, population: 0.92, flights: 0.50 }, // India
+      "826": { gdp: 0.18, population: 0.09, flights: 0.66 }, // UK
+      "250": { gdp: 0.16, population: 0.08, flights: 0.61 }, // France
+      "076": { gdp: 0.13, population: 0.16, flights: 0.37 }, // Brazil
+      "124": { gdp: 0.12, population: 0.05, flights: 0.38 }, // Canada
+      "036": { gdp: 0.10, population: 0.03, flights: 0.43 }, // Australia
+      "643": { gdp: 0.09, population: 0.12, flights: 0.31 }, // Russia
+      "410": { gdp: 0.09, population: 0.07, flights: 0.49 }, // Korea
+      "702": { gdp: 0.04, population: 0.01, flights: 0.58 }, // Singapore
+      "784": { gdp: 0.03, population: 0.01, flights: 0.53 }, // UAE
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. DOM 与应用状态
+    // -------------------------------------------------------------------------
+
+    const canvas = document.querySelector("#globe-canvas");
+    const loadingEl = document.querySelector("#loading");
+    const loadingTextEl = document.querySelector("#loading-text");
+    const tooltipEl = document.querySelector("#tooltip");
+    const tooltipTitleEl = document.querySelector("#tooltip-title");
+    const tooltipBodyEl = document.querySelector("#tooltip-body");
+    const cityPopupEl = document.querySelector("#city-popup");
+    const errorToastEl = document.querySelector("#error-toast");
+
+    const ui = {
+      metricSelect: document.querySelector("#metric-select"),
+      metricUnit: document.querySelector("#metric-unit"),
+      legendMetric: document.querySelector("#legend-metric"),
+      yearRange: document.querySelector("#year-range"),
+      yearLabel: document.querySelector("#year-label"),
+      playBtn: document.querySelector("#play-btn"),
+      toggleRotation: document.querySelector("#toggle-rotation"),
+      toggleHeat: document.querySelector("#toggle-heat"),
+      toggleRoutes: document.querySelector("#toggle-routes"),
+      toggleClouds: document.querySelector("#toggle-clouds"),
+      statCities: document.querySelector("#stat-cities"),
+      statRoutes: document.querySelector("#stat-routes"),
+      statValue: document.querySelector("#stat-value"),
+      statLabel: document.querySelector("#stat-label"),
+      popupName: document.querySelector("#popup-name"),
+      popupCountry: document.querySelector("#popup-country"),
+      popupMetricLabel: document.querySelector("#popup-metric-label"),
+      popupMetricValue: document.querySelector("#popup-metric-value"),
+      popupDesc: document.querySelector("#popup-desc"),
+      popupClose: document.querySelector("#popup-close"),
+    };
+
+    const state = {
+      metric: "gdp",
+      year: 2026,
+      playing: false,
+      selectedCity: null,
+      hoveredRoute: null,
+      isInteracting: false,
+      lastTimelineAdvance: 0,
+      fallbackAssets: [],
+    };
+
+    // -------------------------------------------------------------------------
+    // 3. Three.js 基础场景
+    // -------------------------------------------------------------------------
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+    });
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020611, 0.025);
+
+    const camera = new THREE.PerspectiveCamera(
+      42,
+      window.innerWidth / window.innerHeight,
+      0.01,
+      100,
+    );
+    camera.position.set(0, 0.18, 3.45);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.055;
+    controls.enablePan = false;
+    controls.minDistance = 1.65;
+    controls.maxDistance = 6.3;
+    controls.rotateSpeed = 0.58;
+    controls.zoomSpeed = 0.8;
+    controls.target.set(0, 0, 0);
+
+    controls.addEventListener("start", () => {
+      state.isInteracting = true;
+    });
+    controls.addEventListener("end", () => {
+      state.isInteracting = false;
+    });
+
+    const globeRoot = new THREE.Group();
+    globeRoot.rotation.x = THREE.MathUtils.degToRad(-8);
+    globeRoot.rotation.y = THREE.MathUtils.degToRad(-18);
+    scene.add(globeRoot);
+
+    const sunDirection = new THREE.Vector3(5, 1.6, 3).normalize();
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    sunLight.position.copy(sunDirection).multiplyScalar(6);
+    scene.add(sunLight);
+
+    scene.add(new THREE.AmbientLight(0x16304d, 0.32));
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2(99, 99);
+    const clock = new THREE.Clock();
+
+    let earthMesh;
+    let cloudsMesh;
+    let heatMesh;
+    let heatCanvas;
+    let heatContext;
+    let heatTexture;
+    let worldFeatures = [];
+
+    const cityPickables = [];
+    const cityVisuals = [];
+    const routePickables = [];
+    const routeVisuals = [];
+
+    // -------------------------------------------------------------------------
+    // 4. 通用工具
+    // -------------------------------------------------------------------------
+
+    function showError(message, persistent = false) {
+      errorToastEl.textContent = message;
+      errorToastEl.style.display = "block";
+      if (!persistent) {
+        window.setTimeout(() => {
+          errorToastEl.style.display = "none";
+        }, 6500);
+      }
+    }
+
+    function latLonToVector3(lat, lon, radius = CONFIG.earthRadius) {
+      const phi = THREE.MathUtils.degToRad(90 - lat);
+      const theta = THREE.MathUtils.degToRad(lon + 180);
+
+      return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta),
+      );
+    }
+
+    function hashNumber(input) {
+      const text = String(input);
+      let hash = 2166136261;
+      for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0) / 4294967295;
+    }
+
+    function smoothNoise(id, metric, year) {
+      const base = hashNumber(`${id}-${metric}`);
+      const phase = hashNumber(`${metric}-${id}-phase`) * Math.PI * 2;
+      const wave = Math.sin((year - 2018) * 0.62 + phase) * 0.045;
+      const trend = (year - 2018) * METRICS[metric].growth * (0.18 + base * 0.34);
+      return THREE.MathUtils.clamp(base * 0.72 + 0.08 + wave + trend, 0, 1);
+    }
+
+    function countryMetricValue(featureItem, metric, year) {
+      const id = String(featureItem.id || "0").padStart(3, "0");
+      const profile = countryProfiles[id];
+      const baseline = profile?.[metric] ?? smoothNoise(id, metric, 2018);
+      const metricGrowth = METRICS[metric].growth;
+      const localGrowth = 0.55 + hashNumber(`${id}-${metric}-growth`) * 0.9;
+      const cycle =
+        Math.sin((year - 2018) * 0.58 + hashNumber(id) * Math.PI * 2) * 0.035;
+      return THREE.MathUtils.clamp(
+        baseline * (1 + (year - 2018) * metricGrowth * localGrowth) + cycle,
+        0,
+        1,
+      );
+    }
+
+    function cityMetricValue(city, metric, year) {
+      const base = city[metric];
+      const years = year - 2026;
+      const growthMap = {
+        gdp: 0.038 + hashNumber(`${city.id}-gdp`) * 0.025,
+        population: 0.004 + hashNumber(`${city.id}-population`) * 0.013,
+        flights: 0.035 + hashNumber(`${city.id}-flights`) * 0.04,
+      };
+      const cycle =
+        1 +
+        Math.sin((year - 2018) * 0.72 + hashNumber(city.id) * 6.28) *
+          (metric === "flights" ? 0.07 : 0.025);
+
+      return base * Math.pow(1 + growthMap[metric], years) * cycle;
+    }
+
+    function formatMetric(value, metric, compact = false) {
+      const config = METRICS[metric];
+      const formatted = value.toLocaleString("zh-CN", {
+        minimumFractionDigits: compact ? 0 : config.decimals,
+        maximumFractionDigits: config.decimals,
+      });
+      return `${formatted} ${compact ? config.shortUnit : config.unit}`;
+    }
+
+    function interpolateHeatColor(value, alpha = 1) {
+      const low = new THREE.Color("#10284f");
+      const mid = new THREE.Color("#00b9c9");
+      const high = new THREE.Color("#ff4f7b");
+      const color =
+        value < 0.55
+          ? low.clone().lerp(mid, value / 0.55)
+          : mid.clone().lerp(high, (value - 0.55) / 0.45);
+
+      const r = Math.round(color.r * 255);
+      const g = Math.round(color.g * 255);
+      const b = Math.round(color.b * 255);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function createRadialGlowTexture() {
+      const size = 128;
+      const glowCanvas = document.createElement("canvas");
+      glowCanvas.width = size;
+      glowCanvas.height = size;
+      const context = glowCanvas.getContext("2d");
+      const gradient = context.createRadialGradient(
+        size / 2,
+        size / 2,
+        0,
+        size / 2,
+        size / 2,
+        size / 2,
+      );
+      gradient.addColorStop(0, "rgba(255,255,255,1)");
+      gradient.addColorStop(0.14, "rgba(95,235,255,0.95)");
+      gradient.addColorStop(0.45, "rgba(39,164,255,0.34)");
+      gradient.addColorStop(1, "rgba(0,92,255,0)");
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, size, size);
+
+      const texture = new THREE.CanvasTexture(glowCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    function createFallbackEarthTexture(type = "day") {
+      const textureCanvas = document.createElement("canvas");
+      textureCanvas.width = 1024;
+      textureCanvas.height = 512;
+      const context = textureCanvas.getContext("2d");
+
+      if (type === "night") {
+        context.fillStyle = "#02050b";
+        context.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
+        for (let i = 0; i < 1500; i += 1) {
+          const x = Math.random() * textureCanvas.width;
+          const y = Math.random() * textureCanvas.height;
+          context.fillStyle = `rgba(255, ${170 + Math.random() * 70}, 80, ${
+            0.12 + Math.random() * 0.55
+          })`;
+          context.fillRect(x, y, 1.2, 1.2);
+        }
+      } else if (type === "clouds") {
+        context.clearRect(0, 0, textureCanvas.width, textureCanvas.height);
+        for (let i = 0; i < 80; i += 1) {
+          const x = Math.random() * textureCanvas.width;
+          const y = Math.random() * textureCanvas.height;
+          const radius = 20 + Math.random() * 65;
+          const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+          gradient.addColorStop(0, "rgba(255,255,255,0.22)");
+          gradient.addColorStop(1, "rgba(255,255,255,0)");
+          context.fillStyle = gradient;
+          context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+      } else {
+        const ocean = context.createLinearGradient(0, 0, 0, textureCanvas.height);
+        ocean.addColorStop(0, "#0a4077");
+        ocean.addColorStop(0.52, "#0b5d8a");
+        ocean.addColorStop(1, "#06264d");
+        context.fillStyle = ocean;
+        context.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
+
+        context.fillStyle = "#3e775f";
+        const blobs = [
+          [190, 150, 100, 70],
+          [270, 255, 65, 115],
+          [520, 140, 145, 70],
+          [610, 245, 85, 125],
+          [770, 180, 120, 78],
+          [875, 340, 65, 45],
+        ];
+        blobs.forEach(([x, y, rx, ry]) => {
+          context.beginPath();
+          context.ellipse(x, y, rx, ry, Math.random(), 0, Math.PI * 2);
+          context.fill();
+        });
+      }
+
+      const texture = new THREE.CanvasTexture(textureCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    function loadTexture(filename, fallbackType) {
+      const urls = [
+        `${CONFIG.textureBase}${filename}`,
+        `https://threejs.org/examples/textures/planets/${filename}`,
+      ];
+
+      return new Promise((resolve) => {
+        const loader = new THREE.TextureLoader();
+
+        const tryLoad = (index) => {
+          loader.load(
+            urls[index],
+            (texture) => {
+              texture.colorSpace = THREE.SRGBColorSpace;
+              texture.anisotropy = Math.min(
+                renderer.capabilities.getMaxAnisotropy(),
+                8,
+              );
+              resolve(texture);
+            },
+            undefined,
+            () => {
+              if (index + 1 < urls.length) {
+                tryLoad(index + 1);
+                return;
+              }
+
+              state.fallbackAssets.push(filename);
+              resolve(createFallbackEarthTexture(fallbackType));
+            },
+          );
+        };
+
+        tryLoad(0);
+      });
+    }
+
+    function updatePointer(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function positionTooltip(event) {
+      const margin = 14;
+      const tooltipWidth = 240;
+      const left = Math.min(
+        event.clientX + 14,
+        window.innerWidth - tooltipWidth - margin,
+      );
+      const top = Math.min(event.clientY + 14, window.innerHeight - 100);
+      tooltipEl.style.left = `${left}px`;
+      tooltipEl.style.top = `${top}px`;
+    }
+
+    function hideTooltip() {
+      tooltipEl.style.display = "none";
+      renderer.domElement.style.cursor = state.isInteracting ? "grabbing" : "grab";
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. 星空、地球、云层和大气
+    // -------------------------------------------------------------------------
+
+    function createStarfield() {
+      const starCount = 3600;
+      const positions = new Float32Array(starCount * 3);
+      const colors = new Float32Array(starCount * 3);
+      const color = new THREE.Color();
+
+      for (let i = 0; i < starCount; i += 1) {
+        const radius = 8 + Math.random() * 18;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+
+        positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = radius * Math.cos(phi);
+        positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+        color.setHSL(
+          0.52 + Math.random() * 0.12,
+          0.15 + Math.random() * 0.35,
+          0.55 + Math.random() * 0.42,
+        );
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: 0.017,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.85,
+        vertexColors: true,
+        depthWrite: false,
+      });
+
+      const stars = new THREE.Points(geometry, material);
+      scene.add(stars);
+    }
+
+    function createEarth(dayTexture, nightTexture, cloudTexture) {
+      const earthGeometry = new THREE.SphereGeometry(
+        CONFIG.earthRadius,
+        128,
+        96,
+      );
+
+      const earthMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          dayTexture: { value: dayTexture },
+          nightTexture: { value: nightTexture },
+          sunDirection: { value: sunDirection.clone() },
+          nightIntensity: { value: 1.35 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vWorldNormal;
+
+          void main() {
+            vUv = uv;
+            vWorldNormal = normalize(mat3(modelMatrix) * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D dayTexture;
+          uniform sampler2D nightTexture;
+          uniform vec3 sunDirection;
+          uniform float nightIntensity;
+
+          varying vec2 vUv;
+          varying vec3 vWorldNormal;
+
+          void main() {
+            vec3 normal = normalize(vWorldNormal);
+            float lightDot = dot(normal, normalize(sunDirection));
+
+            // 较窄的平滑区形成清晰但不生硬的日夜分界线。
+            float daylight = smoothstep(-0.12, 0.20, lightDot);
+            float twilight = 1.0 - smoothstep(-0.18, 0.12, abs(lightDot));
+
+            vec3 dayColor = texture2D(dayTexture, vUv).rgb;
+            vec3 nightLights = texture2D(nightTexture, vUv).rgb;
+
+            // 自定义 ShaderMaterial 需要手动近似转换为线性色彩。
+            dayColor = pow(dayColor, vec3(2.2));
+            nightLights = pow(nightLights, vec3(2.0));
+
+            vec3 daySide = dayColor * (0.18 + daylight * 0.95);
+            vec3 nightSide =
+              dayColor * 0.035 +
+              nightLights * (1.0 - daylight) * nightIntensity;
+
+            vec3 twilightTint = vec3(0.18, 0.28, 0.42) * twilight * 0.12;
+            vec3 finalColor = mix(nightSide, daySide, daylight) + twilightTint;
+
+            gl_FragColor = vec4(finalColor, 1.0);
+          }
+        `,
+      });
+
+      earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+      earthMesh.name = "Earth";
+      globeRoot.add(earthMesh);
+
+      const cloudGeometry = new THREE.SphereGeometry(
+        CONFIG.earthRadius * 1.009,
+        128,
+        96,
+      );
+      const cloudMaterial = new THREE.MeshPhongMaterial({
+        map: cloudTexture,
+        alphaMap: cloudTexture,
+        transparent: true,
+        opacity: 0.27,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      cloudsMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+      cloudsMesh.renderOrder = 3;
+      globeRoot.add(cloudsMesh);
+
+      const atmosphereGeometry = new THREE.SphereGeometry(
+        CONFIG.earthRadius * 1.075,
+        96,
+        72,
+      );
+      const atmosphereMaterial = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          varying vec3 vWorldNormal;
+          varying vec3 vWorldPosition;
+
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            vWorldNormal = normalize(mat3(modelMatrix) * normal);
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vWorldNormal;
+          varying vec3 vWorldPosition;
+
+          void main() {
+            vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+            float fresnel = pow(
+              1.0 - max(dot(normalize(vWorldNormal), viewDirection), 0.0),
+              2.55
+            );
+            vec3 atmosphereColor = mix(
+              vec3(0.07, 0.32, 0.72),
+              vec3(0.16, 0.88, 1.0),
+              fresnel
+            );
+            gl_FragColor = vec4(atmosphereColor, fresnel * 0.66);
+          }
+        `,
+      });
+
+      const atmosphere = new THREE.Mesh(
+        atmosphereGeometry,
+        atmosphereMaterial,
+      );
+      atmosphere.renderOrder = 10;
+      globeRoot.add(atmosphere);
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. 国家热力纹理
+    // -------------------------------------------------------------------------
+
+    async function createCountryHeatLayer() {
+      heatCanvas = document.createElement("canvas");
+      heatCanvas.width = 2048;
+      heatCanvas.height = 1024;
+      heatContext = heatCanvas.getContext("2d");
+
+      try {
+        const response = await fetch(CONFIG.countryTopology, { mode: "cors" });
+        if (!response.ok) {
+          throw new Error(`国家边界请求失败：${response.status}`);
+        }
+
+        const topology = await response.json();
+        worldFeatures = feature(
+          topology,
+          topology.objects.countries,
+        ).features;
+
+        heatTexture = new THREE.CanvasTexture(heatCanvas);
+        heatTexture.colorSpace = THREE.SRGBColorSpace;
+        heatTexture.anisotropy = Math.min(
+          renderer.capabilities.getMaxAnisotropy(),
+          8,
+        );
+
+        const heatMaterial = new THREE.MeshBasicMaterial({
+          map: heatTexture,
+          transparent: true,
+          opacity: 0.72,
+          depthWrite: false,
+          blending: THREE.NormalBlending,
+        });
+
+        heatMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(CONFIG.earthRadius * 1.0045, 128, 96),
+          heatMaterial,
+        );
+        heatMesh.renderOrder = 2;
+        globeRoot.add(heatMesh);
+
+        redrawCountryHeatmap();
+      } catch (error) {
+        console.error(error);
+        showError(
+          "国家边界数据加载失败，地球和城市航线仍可使用。建议通过本地 HTTP 服务器打开文件。",
+        );
+      }
+    }
+
+    function redrawCountryHeatmap() {
+      if (!heatContext || worldFeatures.length === 0 || !heatTexture) return;
+
+      const width = heatCanvas.width;
+      const height = heatCanvas.height;
+      heatContext.clearRect(0, 0, width, height);
+
+      const projection = geoEquirectangular()
+        .translate([width / 2, height / 2])
+        .scale(width / (2 * Math.PI))
+        .precision(0.2);
+
+      const path = geoPath(projection, heatContext);
+
+      for (const country of worldFeatures) {
+        const value = countryMetricValue(country, state.metric, state.year);
+        heatContext.beginPath();
+        path(country);
+        heatContext.fillStyle = interpolateHeatColor(
+          value,
+          0.13 + value * 0.58,
+        );
+        heatContext.fill();
+        heatContext.lineWidth = 0.75;
+        heatContext.strokeStyle = `rgba(163, 231, 255, ${
+          0.06 + value * 0.18
+        })`;
+        heatContext.stroke();
+      }
+
+      heatTexture.needsUpdate = true;
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. 城市标记
+    // -------------------------------------------------------------------------
+
+    function createCities() {
+      const glowTexture = createRadialGlowTexture();
+      const markerGroup = new THREE.Group();
+      markerGroup.name = "City markers";
+      globeRoot.add(markerGroup);
+
+      for (const city of cities) {
+        const group = new THREE.Group();
+        group.position.copy(
+          latLonToVector3(city.lat, city.lon, CONFIG.earthRadius * 1.018),
+        );
+        group.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          group.position.clone().normalize(),
+        );
+
+        const stemGeometry = new THREE.CylinderGeometry(
+          0.0022,
+          0.005,
+          0.035,
+          7,
+        );
+        stemGeometry.translate(0, 0.0175, 0);
+        const stemMaterial = new THREE.MeshBasicMaterial({
+          color: 0x49dfff,
+          transparent: true,
+          opacity: 0.62,
+        });
+        const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+        group.add(stem);
+
+        const core = new THREE.Mesh(
+          new THREE.SphereGeometry(0.012, 18, 14),
+          new THREE.MeshBasicMaterial({
+            color: 0xa7f5ff,
+            transparent: true,
+            opacity: 0.96,
+          }),
+        );
+        core.position.y = 0.04;
+        core.userData = { type: "city", city };
+        group.add(core);
+        cityPickables.push(core);
+
+        const glow = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: 0x4fdfff,
+            transparent: true,
+            opacity: 0.72,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+        );
+        glow.position.y = 0.04;
+        glow.scale.setScalar(0.11);
+        group.add(glow);
+
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.014, 0.019, 32),
+          new THREE.MeshBasicMaterial({
+            color: 0x6fe8ff,
+            transparent: true,
+            opacity: 0.75,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          }),
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.002;
+        group.add(ring);
+
+        markerGroup.add(group);
+        cityVisuals.push({ city, group, core, glow, ring, stem });
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. 航线与流动动画
+    // -------------------------------------------------------------------------
+
+    function createRouteCurve(fromCity, toCity) {
+      const start = latLonToVector3(
+        fromCity.lat,
+        fromCity.lon,
+        CONFIG.earthRadius * 1.024,
+      );
+      const end = latLonToVector3(
+        toCity.lat,
+        toCity.lon,
+        CONFIG.earthRadius * 1.024,
+      );
+
+      const angle = start.angleTo(end);
+      const altitude = 1.08 + Math.min(angle / Math.PI, 0.72) * 0.68;
+      const midpoint = start
+        .clone()
+        .add(end)
+        .normalize()
+        .multiplyScalar(altitude);
+
+      return new THREE.QuadraticBezierCurve3(start, midpoint, end);
+    }
+
+    function createRoutes() {
+      const routeGroup = new THREE.Group();
+      routeGroup.name = "Flight routes";
+      globeRoot.add(routeGroup);
+
+      routes.forEach((route, index) => {
+        const fromCity = cityById.get(route.from);
+        const toCity = cityById.get(route.to);
+        const curve = createRouteCurve(fromCity, toCity);
+
+        const hue = 0.49 + (index % 5) * 0.025;
+        const baseColor = new THREE.Color().setHSL(hue, 0.88, 0.61);
+
+        const material = new THREE.MeshBasicMaterial({
+          color: baseColor,
+          transparent: true,
+          opacity: 0.32,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+
+        const tube = new THREE.Mesh(
+          new THREE.TubeGeometry(curve, 72, 0.0044, 6, false),
+          material,
+        );
+        tube.userData = {
+          type: "route",
+          route,
+          fromCity,
+          toCity,
+          baseColor: baseColor.clone(),
+        };
+        routeGroup.add(tube);
+        routePickables.push(tube);
+
+        const flowMaterial = new THREE.MeshBasicMaterial({
+          color: 0xc4fbff,
+          transparent: true,
+          opacity: 0.94,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+
+        const particles = [];
+        const particleCount = route.dailyFlights > 35 ? 3 : 2;
+
+        for (let i = 0; i < particleCount; i += 1) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.009, 10, 8),
+            flowMaterial.clone(),
+          );
+          particle.userData.offset = i / particleCount;
+          particle.position.copy(curve.getPoint(i / particleCount));
+          routeGroup.add(particle);
+          particles.push(particle);
+        }
+
+        routeVisuals.push({
+          route,
+          curve,
+          tube,
+          particles,
+          phase: hashNumber(route.id),
+        });
+      });
+    }
+
+    function setHoveredRoute(routeMesh) {
+      if (state.hoveredRoute === routeMesh) return;
+
+      if (state.hoveredRoute) {
+        const previous = state.hoveredRoute;
+        previous.material.color.copy(previous.userData.baseColor);
+        previous.material.opacity = previous.userData.baseOpacity ?? 0.32;
+      }
+
+      state.hoveredRoute = routeMesh;
+
+      if (routeMesh) {
+        routeMesh.material.color.set(0xffffff);
+        routeMesh.material.opacity = 0.9;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. 指标更新、弹窗与交互
+    // -------------------------------------------------------------------------
+
+    function metricMax(metric) {
+      return Math.max(
+        ...cities.map((city) =>
+          cityMetricValue(city, metric, state.year),
+        ),
+      );
+    }
+
+    function updateDataVisuals() {
+      const maxValue = metricMax(state.metric);
+
+      cityVisuals.forEach((visual) => {
+        const value = cityMetricValue(
+          visual.city,
+          state.metric,
+          state.year,
+        );
+        const normalized = THREE.MathUtils.clamp(value / maxValue, 0.08, 1);
+
+        visual.group.userData.metricScale = 0.78 + normalized * 0.72;
+        visual.core.material.color.setHSL(
+          0.52 - normalized * 0.04,
+          0.9,
+          0.66 + normalized * 0.16,
+        );
+        visual.stem.material.opacity = 0.35 + normalized * 0.55;
+        visual.ring.material.opacity = 0.38 + normalized * 0.55;
+      });
+
+      routeVisuals.forEach((visual) => {
+        const yearFactor = Math.pow(1.045, state.year - 2026);
+        const volume = visual.route.dailyFlights * yearFactor;
+        const baseOpacity = THREE.MathUtils.clamp(
+          0.17 + volume / 105,
+          0.22,
+          0.57,
+        );
+        visual.tube.userData.baseOpacity = baseOpacity;
+        if (state.hoveredRoute !== visual.tube) {
+          visual.tube.material.opacity = baseOpacity;
+        }
+        visual.route.currentFlights = volume;
+      });
+
+      redrawCountryHeatmap();
+      refreshUI();
+      if (state.selectedCity) openCityPopup(state.selectedCity);
+    }
+
+    function refreshUI() {
+      const metric = METRICS[state.metric];
+      ui.metricUnit.textContent = metric.unit;
+      ui.legendMetric.textContent = metric.countryLabel;
+      ui.yearLabel.textContent = state.year;
+      ui.yearRange.value = state.year;
+      ui.playBtn.textContent = state.playing ? "❚❚" : "▶";
+      ui.playBtn.setAttribute(
+        "aria-label",
+        state.playing ? "暂停时间轴" : "播放时间轴",
+      );
+
+      ui.statCities.textContent = cities.length;
+      ui.statRoutes.textContent = routes.length;
+
+      const total = cities.reduce(
+        (sum, city) =>
+          sum + cityMetricValue(city, state.metric, state.year),
+        0,
+      );
+
+      ui.statValue.textContent =
+        state.metric === "gdp"
+          ? total.toFixed(1)
+          : Math.round(total).toLocaleString("zh-CN");
+
+      ui.statLabel.textContent =
+        state.metric === "gdp"
+          ? "城市 GDP / T"
+          : state.metric === "population"
+            ? "城市人口 / M"
+            : "每日航班";
+    }
+
+    function openCityPopup(city) {
+      state.selectedCity = city;
+      const metric = METRICS[state.metric];
+      const value = cityMetricValue(city, state.metric, state.year);
+
+      ui.popupName.textContent = city.name;
+      ui.popupCountry.textContent = `${city.country} · ${state.year}`;
+      ui.popupMetricLabel.textContent = metric.label;
+      ui.popupMetricValue.textContent = formatMetric(
+        value,
+        state.metric,
+      );
+      ui.popupDesc.textContent = city.description;
+      cityPopupEl.style.display = "block";
+    }
+
+    function closeCityPopup() {
+      state.selectedCity = null;
+      cityPopupEl.style.display = "none";
+    }
+
+    function pickAtPointer() {
+      raycaster.setFromCamera(pointer, camera);
+
+      const cityHits = raycaster.intersectObjects(cityPickables, false);
+      if (cityHits.length > 0) {
+        return { type: "city", object: cityHits[0].object };
+      }
+
+      const routeHits = raycaster.intersectObjects(routePickables, false);
+      if (routeHits.length > 0) {
+        return { type: "route", object: routeHits[0].object };
+      }
+
+      return null;
+    }
+
+    renderer.domElement.addEventListener("pointermove", (event) => {
+      updatePointer(event);
+      const hit = pickAtPointer();
+
+      if (!hit) {
+        setHoveredRoute(null);
+        hideTooltip();
+        return;
+      }
+
+      positionTooltip(event);
+      tooltipEl.style.display = "block";
+      renderer.domElement.style.cursor = "pointer";
+
+      if (hit.type === "city") {
+        setHoveredRoute(null);
+        const city = hit.object.userData.city;
+        const value = cityMetricValue(
+          city,
+          state.metric,
+          state.year,
+        );
+        tooltipTitleEl.textContent = `${city.name} · ${METRICS[state.metric].label}`;
+        tooltipBodyEl.textContent = formatMetric(
+          value,
+          state.metric,
+        );
+      } else {
+        const routeMesh = hit.object;
+        setHoveredRoute(routeMesh);
+
+        const { route, fromCity, toCity } = routeMesh.userData;
+        const currentFlights =
+          route.currentFlights ?? route.dailyFlights;
+
+        tooltipTitleEl.textContent = route.name;
+        tooltipBodyEl.textContent =
+          `${fromCity.name} → ${toCity.name} · ` +
+          `${Math.round(currentFlights)} 班/日 · ${route.duration}`;
+      }
+    });
+
+    renderer.domElement.addEventListener("pointerleave", () => {
+      setHoveredRoute(null);
+      hideTooltip();
+    });
+
+    renderer.domElement.addEventListener("click", (event) => {
+      updatePointer(event);
+      const hit = pickAtPointer();
+      if (hit?.type === "city") {
+        openCityPopup(hit.object.userData.city);
+      }
+    });
+
+    ui.popupClose.addEventListener("click", closeCityPopup);
+
+    ui.metricSelect.addEventListener("change", (event) => {
+      state.metric = event.target.value;
+      updateDataVisuals();
+    });
+
+    ui.yearRange.addEventListener("input", (event) => {
+      state.year = Number(event.target.value);
+      updateDataVisuals();
+    });
+
+    ui.playBtn.addEventListener("click", () => {
+      state.playing = !state.playing;
+      state.lastTimelineAdvance = performance.now();
+      refreshUI();
+    });
+
+    ui.toggleRotation.addEventListener("change", refreshUI);
+
+    ui.toggleHeat.addEventListener("change", (event) => {
+      if (heatMesh) heatMesh.visible = event.target.checked;
+    });
+
+    ui.toggleRoutes.addEventListener("change", (event) => {
+      routeVisuals.forEach((visual) => {
+        visual.tube.visible = event.target.checked;
+        visual.particles.forEach((particle) => {
+          particle.visible = event.target.checked;
+        });
+      });
+    });
+
+    ui.toggleClouds.addEventListener("change", (event) => {
+      if (cloudsMesh) cloudsMesh.visible = event.target.checked;
+    });
+
+    // -------------------------------------------------------------------------
+    // 10. 动画
+    // -------------------------------------------------------------------------
+
+    function animateCityLights(elapsedTime) {
+      const maxValue = metricMax(state.metric);
+      const worldPosition = new THREE.Vector3();
+
+      cityVisuals.forEach((visual, index) => {
+        visual.core.getWorldPosition(worldPosition);
+        const surfaceDirection = worldPosition.normalize();
+        const daylight = THREE.MathUtils.smoothstep(
+          surfaceDirection.dot(sunDirection),
+          -0.12,
+          0.2,
+        );
+        const night = 1 - daylight;
+
+        const value = cityMetricValue(
+          visual.city,
+          state.metric,
+          state.year,
+        );
+        const normalized = THREE.MathUtils.clamp(value / maxValue, 0.08, 1);
+        const pulse =
+          1 +
+          Math.sin(elapsedTime * (2.1 + normalized) + index * 0.73) *
+            (0.04 + normalized * 0.035);
+
+        const metricScale = visual.group.userData.metricScale ?? 1;
+        const nightBoost = 1 + night * 0.46;
+
+        visual.core.scale.setScalar(metricScale * pulse * nightBoost);
+        visual.glow.scale.setScalar(
+          (0.07 + normalized * 0.085) * pulse * (1 + night * 0.72),
+        );
+        visual.glow.material.opacity =
+          0.28 + normalized * 0.36 + night * 0.32;
+        visual.ring.scale.setScalar(
+          1 +
+            ((elapsedTime * (0.45 + normalized * 0.2) + index * 0.11) % 1) *
+              1.25,
+        );
+        visual.ring.material.opacity =
+          (0.8 -
+            ((elapsedTime * (0.45 + normalized * 0.2) + index * 0.11) % 1) *
+              0.75) *
+          (0.55 + night * 0.45);
+      });
+    }
+
+    function animateRoutes(elapsedTime) {
+      routeVisuals.forEach((visual, routeIndex) => {
+        const yearFactor = Math.pow(1.045, state.year - 2026);
+        const speed =
+          0.045 +
+          Math.min(visual.route.dailyFlights * yearFactor / 1500, 0.07);
+
+        visual.particles.forEach((particle, particleIndex) => {
+          const t =
+            (elapsedTime * speed +
+              particle.userData.offset +
+              visual.phase +
+              routeIndex * 0.017) %
+            1;
+          particle.position.copy(visual.curve.getPoint(t));
+          const wave = 0.75 + Math.sin(t * Math.PI) * 0.55;
+          particle.scale.setScalar(wave);
+          particle.material.opacity =
+            0.45 + Math.sin(t * Math.PI) * 0.55;
+        });
+      });
+    }
+
+    function updateTimelinePlayback(now) {
+      if (!state.playing) return;
+      if (now - state.lastTimelineAdvance < 1150) return;
+
+      state.year = state.year >= 2026 ? 2018 : state.year + 1;
+      state.lastTimelineAdvance = now;
+      updateDataVisuals();
+    }
+
+    function animate(now = performance.now()) {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const elapsedTime = clock.elapsedTime;
+
+      if (
+        ui.toggleRotation.checked &&
+        !state.isInteracting
+      ) {
+        globeRoot.rotation.y +=
+          CONFIG.autoRotateSpeed * delta * 60;
+      }
+
+      if (cloudsMesh && ui.toggleClouds.checked) {
+        cloudsMesh.rotation.y += 0.00011 * delta * 60;
+      }
+
+      if (earthMesh) {
+        earthMesh.material.uniforms.sunDirection.value.copy(sunDirection);
+      }
+
+      animateCityLights(elapsedTime);
+      animateRoutes(elapsedTime);
+      updateTimelinePlayback(now);
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. 初始化与响应式
+    // -------------------------------------------------------------------------
+
+    async function init() {
+      createStarfield();
+
+      loadingTextEl.textContent = "正在加载昼夜地球纹理…";
+
+      const [dayTexture, nightTexture, cloudTexture] = await Promise.all([
+        loadTexture("earth_atmos_2048.jpg", "day"),
+        loadTexture("earth_lights_2048.png", "night"),
+        loadTexture("earth_clouds_1024.png", "clouds"),
+      ]);
+
+      createEarth(dayTexture, nightTexture, cloudTexture);
+      createCities();
+      createRoutes();
+
+      loadingTextEl.textContent = "正在生成国家热力图层…";
+      await createCountryHeatLayer();
+
+      updateDataVisuals();
+      refreshUI();
+
+      if (state.fallbackAssets.length > 0) {
+        showError(
+          `部分远程纹理未能加载，已启用内置降级纹理：${state.fallbackAssets.join(
+            "、",
+          )}`,
+        );
+      }
+
+      loadingEl.classList.add("hidden");
+      animate();
+    }
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight, false);
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeCityPopup();
+      }
+      if (event.code === "Space" && event.target === document.body) {
+        event.preventDefault();
+        state.playing = !state.playing;
+        state.lastTimelineAdvance = performance.now();
+        refreshUI();
+      }
+    });
+
+    init().catch((error) => {
+      console.error(error);
+      loadingEl.classList.add("hidden");
+      showError(
+        `初始化失败：${error.message}。请检查网络连接，并尝试通过本地 HTTP 服务器打开本文件。`,
+        true,
+      );
+    });
+  </script>
+</body>
+</html>
