@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1000 600"
+     width="1000" height="600"
+     role="img"
+     aria-labelledby="title desc">
+  <title id="title">Animated giraffe driving a tiny car</title>
+  <desc id="desc">A cheerful giraffe drives a tiny red car across a sunny savanna. The car bounces, wheels spin, scenery scrolls, and the giraffe waves.</desc>
+
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8ed8ff"/>
+      <stop offset="100%" stop-color="#eaf9ff"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f3c86a"/>
+      <stop offset="100%" stop-color="#dca64d"/>
+    </linearGradient>
+    <linearGradient id="carPaint" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff665f"/>
+      <stop offset="100%" stop-color="#c92f3a"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <style>
+      .outline { stroke:#3a2c2b; stroke-width:8; stroke-linecap:round; stroke-linejoin:round; }
+      .thin { stroke:#3a2c2b; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+      .wheel-spin { transform-box: fill-box; transform-origin: center; animation: spin .6s linear infinite; }
+      .car-bob { animation: bob 1.1s ease-in-out infinite; transform-origin: 50% 80%; }
+      .giraffe-bob { animation: giraffeBob 1.1s ease-in-out infinite; transform-origin: 50% 80%; }
+      .wave { transform-box: fill-box; transform-origin: 18% 88%; animation: wave 1.4s ease-in-out infinite; }
+      .blink { transform-origin:center; animation: blink 4.5s infinite; }
+      .roadmark { animation: road 1.8s linear infinite; }
+      .cloud1 { animation: drift1 18s linear infinite; }
+      .cloud2 { animation: drift2 24s linear infinite; }
+      .tree1 { animation: scenery1 8s linear infinite; }
+      .tree2 { animation: scenery2 11s linear infinite; }
+      .dust { animation: dust 1.2s ease-out infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes bob {
+        0%,100% { transform: translateY(0) rotate(-1deg); }
+        50% { transform: translateY(-8px) rotate(1deg); }
+      }
+      @keyframes giraffeBob {
+        0%,100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      @keyframes wave {
+        0%,100% { transform: rotate(-12deg); }
+        50% { transform: rotate(28deg); }
+      }
+      @keyframes blink {
+        0%,46%,50%,100% { transform: scaleY(1); }
+        48% { transform: scaleY(.08); }
+      }
+      @keyframes road { to { transform: translateX(-260px); } }
+      @keyframes drift1 { from { transform: translateX(0); } to { transform: translateX(1150px); } }
+      @keyframes drift2 { from { transform: translateX(0); } to { transform: translateX(1250px); } }
+      @keyframes scenery1 { from { transform: translateX(0); } to { transform: translateX(-1250px); } }
+      @keyframes scenery2 { from { transform: translateX(0); } to { transform: translateX(-1350px); } }
+      @keyframes dust {
+        0% { opacity:.55; transform: translate(0,0) scale(.5); }
+        100% { opacity:0; transform: translate(-70px,-18px) scale(1.5); }
+      }
+    </style>
+
+    <g id="wheel">
+      <circle r="46" fill="#2c2d33" class="outline"/>
+      <circle r="24" fill="#f3c86a" class="thin"/>
+      <path d="M0-22V22M-22 0H22M-16-16L16 16M16-16L-16 16" fill="none" class="thin"/>
+      <circle r="7" fill="#3a2c2b"/>
+    </g>
+
+    <g id="cloud">
+      <ellipse cx="0" cy="0" rx="55" ry="24" fill="#fff" opacity=".92"/>
+      <circle cx="-28" cy="-15" r="24" fill="#fff"/>
+      <circle cx="4" cy="-23" r="33" fill="#fff"/>
+      <circle cx="34" cy="-13" r="25" fill="#fff"/>
+    </g>
+
+    <g id="tree">
+      <rect x="-10" y="25" width="20" height="75" rx="8" fill="#7a4c2f"/>
+      <path d="M0 35 C-65 35 -80 5 -40 -12 C-30 -52 10 -57 28 -25 C70 -30 85 8 55 25 C42 46 17 45 0 35Z"
+            fill="#6aa64a" class="thin"/>
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="600" fill="url(#sky)"/>
+  <circle cx="830" cy="105" r="58" fill="#ffd45e"/>
+  <circle cx="830" cy="105" r="78" fill="#ffd45e" opacity=".18"/>
+
+  <g opacity=".85">
+    <g class="cloud1" transform="translate(-180 105)"><use xlink:href="#cloud"/></g>
+    <g class="cloud2" transform="translate(-420 190) scale(.7)"><use xlink:href="#cloud"/></g>
+  </g>
+
+  <path d="M0 345 Q160 300 300 350 T650 340 T1000 350 L1000 490 L0 490Z"
+        fill="#d7b45c" opacity=".65"/>
+  <rect y="390" width="1000" height="210" fill="url(#ground)"/>
+
+  <!-- Moving scenery -->
+  <g class="tree1">
+    <g transform="translate(1120 300) scale(.9)"><use xlink:href="#tree"/></g>
+    <g transform="translate(1510 325) scale(.65)"><use xlink:href="#tree"/></g>
+  </g>
+  <g class="tree2">
+    <g transform="translate(1380 320) scale(.75)"><use xlink:href="#tree"/></g>
+    <g transform="translate(1880 295) scale(1.05)"><use xlink:href="#tree"/></g>
+  </g>
+
+  <!-- Road -->
+  <rect y="470" width="1000" height="130" fill="#62666c"/>
+  <rect y="470" width="1000" height="12" fill="#f8e8b8"/>
+  <g class="roadmark">
+    <rect x="40" y="530" width="150" height="18" rx="9" fill="#f6edc7"/>
+    <rect x="300" y="530" width="150" height="18" rx="9" fill="#f6edc7"/>
+    <rect x="560" y="530" width="150" height="18" rx="9" fill="#f6edc7"/>
+    <rect x="820" y="530" width="150" height="18" rx="9" fill="#f6edc7"/>
+    <rect x="1080" y="530" width="150" height="18" rx="9" fill="#f6edc7"/>
+  </g>
+
+  <!-- Car shadow -->
+  <ellipse cx="530" cy="520" rx="245" ry="34" fill="#27282c" opacity=".25" filter="url(#shadow)"/>
+
+  <!-- Dust puffs -->
+  <g opacity=".8">
+    <circle class="dust" cx="290" cy="490" r="18" fill="#e9d6aa"/>
+    <circle class="dust" cx="270" cy="505" r="11" fill="#e9d6aa" style="animation-delay:.35s"/>
+    <circle class="dust" cx="305" cy="515" r="9" fill="#e9d6aa" style="animation-delay:.7s"/>
+  </g>
+
+  <!-- Car + giraffe -->
+  <g class="car-bob">
+    <!-- Giraffe -->
+    <g class="giraffe-bob">
+      <!-- neck -->
+      <path d="M565 360 C565 305 568 245 587 188 C598 155 626 142 652 155
+               C676 168 681 196 664 220 C647 244 632 281 632 360Z"
+            fill="#f5c44f" class="outline"/>
+      <!-- spots -->
+      <ellipse cx="602" cy="316" rx="16" ry="22" fill="#9f6535" transform="rotate(18 602 316)"/>
+      <ellipse cx="614" cy="263" rx="13" ry="18" fill="#9f6535" transform="rotate(-12 614 263)"/>
+      <ellipse cx="632" cy="214" rx="14" ry="19" fill="#9f6535" transform="rotate(24 632 214)"/>
+      <ellipse cx="590" cy="225" rx="11" ry="15" fill="#9f6535" transform="rotate(-20 590 225)"/>
+
+      <!-- head -->
+      <path d="M585 166 C580 118 620 86 674 100 C712 110 730 145 714 180
+               C698 213 649 222 611 200 C595 191 587 181 585 166Z"
+            fill="#f5c44f" class="outline"/>
+      <!-- muzzle -->
+      <ellipse cx="695" cy="176" rx="35" ry="25" fill="#f9d98e" class="thin"/>
+      <circle cx="711" cy="168" r="4.5" fill="#3a2c2b"/>
+      <path d="M691 184 Q705 194 716 183" fill="none" class="thin"/>
+
+      <!-- ears -->
+      <path d="M606 111 Q568 82 573 126 Q583 143 611 132Z" fill="#f5c44f" class="outline"/>
+      <path d="M690 108 Q722 73 728 116 Q716 137 690 132Z" fill="#f5c44f" class="outline"/>
+      <path d="M584 115 Q580 103 596 117" fill="none" class="thin"/>
+      <path d="M716 111 Q714 98 702 117" fill="none" class="thin"/>
+
+      <!-- ossicones -->
+      <path d="M620 104 L614 72" fill="none" class="outline"/>
+      <circle cx="613" cy="65" r="10" fill="#9f6535" class="thin"/>
+      <path d="M669 101 L674 67" fill="none" class="outline"/>
+      <circle cx="675" cy="60" r="10" fill="#9f6535" class="thin"/>
+
+      <!-- mane -->
+      <path d="M588 139 Q570 146 587 157 Q568 164 587 176 Q570 183 593 193"
+            fill="#8e5732" class="thin"/>
+
+      <!-- eyes -->
+      <g class="blink">
+        <ellipse cx="630" cy="153" rx="8" ry="11" fill="#fff"/>
+        <circle cx="632" cy="155" r="5" fill="#262326"/>
+        <ellipse cx="680" cy="151" rx="8" ry="11" fill="#fff"/>
+        <circle cx="682" cy="153" r="5" fill="#262326"/>
+      </g>
+      <path d="M619 137 Q629 130 639 136M670 135 Q680 128 690 135" fill="none" class="thin"/>
+
+      <!-- scarf -->
+      <path d="M591 346 Q612 365 636 346 L644 375 Q609 389 579 369Z"
+            fill="#35a7a5" class="outline"/>
+      <path d="M614 374 L590 420" fill="none" stroke="#35a7a5" stroke-width="16" stroke-linecap="round"/>
+      <path d="M626 376 L642 420" fill="none" stroke="#35a7a5" stroke-width="16" stroke-linecap="round"/>
+
+      <!-- steering arm -->
+      <path d="M590 355 Q548 378 535 418" fill="none" stroke="#f5c44f" stroke-width="24" stroke-linecap="round" class="outline"/>
+      <circle cx="534" cy="419" r="13" fill="#f5c44f" class="thin"/>
+
+      <!-- waving arm -->
+      <g class="wave">
+        <path d="M624 350 Q681 331 704 292" fill="none" stroke="#f5c44f" stroke-width="24" stroke-linecap="round" class="outline"/>
+        <circle cx="707" cy="286" r="14" fill="#f5c44f" class="thin"/>
+        <path d="M706 278 l-8 -19 M710 277 l7 -20 M715 282 l17 -12" fill="none" class="thin"/>
+      </g>
+    </g>
+
+    <!-- Car body -->
+    <path d="M330 413 Q365 359 442 350 L628 350 Q699 357 744 418
+             L793 432 Q817 439 817 469 L817 482 L300 482 L300 448
+             Q303 421 330 413Z"
+          fill="url(#carPaint)" class="outline"/>
+
+    <!-- Windshield -->
+    <path d="M454 359 L486 359 L486 416 L398 416 Q418 374 454 359Z"
+          fill="#bcecff" opacity=".92" class="thin"/>
+    <path d="M510 359 L614 359 Q661 365 691 416 L510 416Z"
+          fill="#bcecff" opacity=".92" class="thin"/>
+    <path d="M493 354 L493 421" class="thin" fill="none"/>
+
+    <!-- Car details -->
+    <path d="M308 450 H806" fill="none" stroke="#ff9690" stroke-width="8" opacity=".7"/>
+    <rect x="318" y="431" width="54" height="26" rx="12" fill="#ffe071" class="thin"/>
+    <rect x="754" y="430" width="47" height="25" rx="12" fill="#ffe071" class="thin"/>
+    <path d="M644 432 H716" fill="none" class="thin"/>
+    <circle cx="695" cy="444" r="4" fill="#3a2c2b"/>
+
+    <!-- Steering wheel -->
+    <circle cx="535" cy="419" r="27" fill="none" class="thin"/>
+    <path d="M535 393V445M510 419H560" fill="none" class="thin"/>
+
+    <!-- Wheels -->
+    <g transform="translate(406 484)" class="wheel-spin"><use xlink:href="#wheel"/></g>
+    <g transform="translate(710 484)" class="wheel-spin"><use xlink:href="#wheel"/></g>
+
+    <!-- Bumpers -->
+    <rect x="286" y="465" width="48" height="18" rx="8" fill="#d9e1e8" class="thin"/>
+    <rect x="796" y="465" width="42" height="18" rx="8" fill="#d9e1e8" class="thin"/>
+  </g>
+
+  <!-- Foreground grass streaks -->
+  <g opacity=".55" stroke="#5e763c" stroke-width="5" stroke-linecap="round">
+    <path d="M90 455 l10 -22 M105 456 l-2 -28 M120 457 l-12 -19"/>
+    <path d="M910 455 l10 -22 M925 456 l-2 -28 M940 457 l-12 -19"/>
+  </g>
+</svg>
