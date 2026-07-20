@@ -1,6 +1,35 @@
 # Kimi-K3 evaluation result
 
-- Status: Not executed
-- Reason: The required reference image could not be attached because the Chrome automation safety layer rejected local file upload. The question was not submitted without its image.
-- Raw assistant answer: Not available
+- Status: Completed
+- Model: kimi-k3
 
+## Raw assistant answer
+
+最少需要取出 **29 颗糖果**。
+
+思路：先计算“最多能拿多少颗仍不满足条件”，再加 1。
+
+- 西瓜味糖果与目标无关，最多可全部拿到：
+  \(8+4=12\) 颗。
+- 要避免满足条件，可以留下所有五角星形苹果味和五角星形桃子味不拿，而拿走：
+  - 圆形苹果味 7 颗
+  - 圆形桃子味 9 颗
+
+这样一共拿到：
+
+\[
+12+7+9=28
+\]
+
+此时手中没有任何五角星形苹果味或五角星形桃子味，因此仍不满足要求。
+
+再拿第 29 颗时，只剩五角星形苹果味或五角星形桃子味：
+
+- 拿到五角星苹果味，可与圆形桃子味配对；
+- 拿到五角星桃子味，可与圆形苹果味配对。
+
+所以答案是：
+
+\[
+\boxed{29}
+\]
