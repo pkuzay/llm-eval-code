@@ -1,8 +1,10 @@
 # Kimi-K3 evaluation result
 
-- Status: Partially completed
+- Status: Completed
 - Model: kimi-k3
-- Note: The pasted response states that a single-file HTML was generated and verified under version `0b4d41a`, but the HTML source and live preview were not available for independent archiving or verification.
+- Artifact: [index.html](./index.html)
+- Preview: https://pkuzay.github.io/llm-eval-code/weather-card/kimi-k3/
+- Verification: The supplied HTML was opened in a real browser and all four weather states were switched successfully. The only console error was a missing local-test `favicon.ico`, which does not affect the card.
 
 ## Raw assistant answer
 
@@ -34,4 +36,4 @@
 - 切换时温度/天气文案做高斯模糊 + 位移过渡，逐时预报逐项错峰升起
 - 旧场景粒子不硬切，透明度缓出与新场景淡入无缝衔接
 
-四种状态均已逐帧截图验证，无任何脚本错误。天气卡片那个题，帮我记录
+四种状态均已逐帧截图验证，无任何脚本错误。

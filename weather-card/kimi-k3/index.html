@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>天气 · iOS 18 Weather Card</title>
+<style>
+/* ============ 基础 ============ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --spring: cubic-bezier(.3,1.45,.4,1);
+  --ease-out: cubic-bezier(.2,.9,.25,1);
+  --card-w: min(400px, 92vw);
+}
+html,body{height:100%}
+body{
+  background:#050507;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+  color:#fff;
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============ 环境氛围光斑 ============ */
+.blob{position:fixed;width:62vmax;height:62vmax;border-radius:50%;filter:blur(130px);opacity:.32;transition:background-color 1.4s ease;pointer-events:none;z-index:0}
+.blob.b1{top:-22vmax;left:-16vmax;background-color:#7c4a03}
+.blob.b2{bottom:-24vmax;right:-16vmax;background-color:#1e3a8a}
+
+/* ============ 噪点质感 ============ */
+.noise{position:fixed;inset:-50%;z-index:60;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grain 8s steps(10) infinite}
+@keyframes grain{0%,100%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-2%)}80%{transform:translate(3%,3%)}}
+
+/* ============ 舞台 & 卡片 ============ */
+.stage{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;padding:20px}
+.card{
+  position:relative;width:var(--card-w);height:min(720px,calc(100dvh - 170px));min-height:580px;
+  border-radius:46px;overflow:hidden;
+  background:linear-gradient(178deg,#10121a 0%,#0a0c12 55%,#080a0f 100%);
+  box-shadow:0 50px 110px -24px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.09),inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.04);
+  transform-style:preserve-3d;will-change:transform;
+}
+/* 动态光晕层 —— 随天气切换交叉淡入 */
+.glow{position:absolute;inset:0;opacity:0;transition:opacity 1.1s ease;pointer-events:none;z-index:0}
+.g-sunny{background:
+  radial-gradient(120% 70% at 72% 6%,rgba(255,178,54,.38),transparent 60%),
+  radial-gradient(90% 60% at 15% 100%,rgba(64,100,220,.16),transparent 65%)}
+.g-wind{background:
+  radial-gradient(110% 70% at 30% 12%,rgba(45,212,191,.24),transparent 62%),
+  radial-gradient(90% 60% at 85% 95%,rgba(56,130,200,.14),transparent 65%)}
+.g-rain{background:
+  radial-gradient(120% 70% at 50% -4%,rgba(64,110,235,.34),transparent 62%),
+  radial-gradient(90% 55% at 80% 105%,rgba(30,60,140,.2),transparent 60%)}
+.g-snow{background:
+  radial-gradient(110% 70% at 42% 4%,rgba(168,196,255,.26),transparent 60%),
+  radial-gradient(90% 60% at 90% 100%,rgba(110,140,220,.13),transparent 65%)}
+
+#scene{position:absolute;inset:0;z-index:1}
+.scene-dom{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.flash{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;
+  background:radial-gradient(120% 90% at 50% -10%,rgba(255,255,255,.95),rgba(185,205,255,.45) 55%,transparent 80%)}
+.flash.strike{animation:flashAnim .55s ease-out}
+@keyframes flashAnim{0%{opacity:0}7%{opacity:1}16%{opacity:.12}28%{opacity:.75}100%{opacity:0}}
+.sheen{position:absolute;inset:0;z-index:4;pointer-events:none;mix-blend-mode:soft-light;opacity:.9;
+  background:radial-gradient(340px circle at var(--mx,50%) var(--my,30%),rgba(255,255,255,.7),transparent 70%)}
+
+/* ============ 场景图层进入/离开 ============ */
+.scene-layer{position:absolute;inset:0;opacity:0;transition:opacity .7s ease}
+.scene-layer.in{opacity:1}
+.scene-layer.out{opacity:0;transition-duration:.4s}
+
+/* ============ 晴天：太阳 ============ */
+.sun-wrap{position:absolute;left:52%;top:7%;width:190px;height:190px;transform:scale(.5) translateY(40px);transition:transform 1.1s var(--spring)}
+.scene-layer.in .sun-wrap{transform:scale(1) translateY(0)}
+.sun-core{position:absolute;inset:33%;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#fffbe8,#ffe27a 42%,#ffb340 72%,#ff9d2e);
+  box-shadow:0 0 44px 12px rgba(255,190,60,.55),0 0 130px 64px rgba(255,150,40,.26);
+  animation:corePulse 4.5s ease-in-out infinite}
+@keyframes corePulse{50%{box-shadow:0 0 64px 20px rgba(255,196,70,.75),0 0 170px 84px rgba(255,150,40,.36)}}
+.rays{position:absolute;inset:-24%;animation:spin 46s linear infinite}
+.rays2{position:absolute;inset:-8%;animation:spinR 30s linear infinite;opacity:.55}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinR{to{transform:rotate(-360deg)}}
+.flare{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,222,150,.55),transparent 70%);
+  animation:flareFloat 7s ease-in-out infinite alternate}
+.flare.f1{left:36%;top:40%;width:30px;height:30px}
+.flare.f2{left:27%;top:53%;width:14px;height:14px;animation-delay:-3s}
+.flare.f3{left:20%;top:64%;width:44px;height:44px;background:none;border:1.5px solid rgba(255,220,150,.35);animation-delay:-5s}
+@keyframes flareFloat{to{transform:translateY(-8px)}}
+
+/* ============ 云 ============ */
+.cloud{position:absolute;left:0;width:190px;animation:drift linear infinite;will-change:transform}
+.cloud-svg{display:block;width:100%;height:auto}
+@keyframes drift{from{transform:translateX(-300px)}to{transform:translateX(760px)}}
+.bob{animation:bob 3.6s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-10px)}}
+.cloud.w1{top:9%;animation-duration:8.5s}
+.cloud.w2{top:22%;width:250px;animation-duration:12s;animation-delay:-6s}
+.cloud.w3{top:15%;width:150px;animation-duration:10s;animation-delay:-2.5s}
+.cloud.windc{opacity:.85;filter:blur(2.5px)}
+.cloud.rc1{top:-3%;width:270px;animation-duration:34s}
+.cloud.rc2{top:6%;width:210px;animation-duration:46s;animation-delay:-20s}
+.cloud.dark{opacity:.95;filter:blur(4px)}
+.cloud.sc1{top:7%;width:230px;animation-duration:38s}
+.cloud.sc2{top:16%;width:175px;animation-duration:52s;animation-delay:-24s}
+.cloud.pale{opacity:.45;filter:blur(3.5px)}
+
+/* ============ 大风：树 ============ */
+.tree{position:absolute;left:6px;bottom:246px;width:142px;overflow:visible}
+.tree .tree-inner{transform-box:fill-box;transform-origin:bottom center;animation:treeSway 2.6s ease-in-out infinite alternate}
+@keyframes treeSway{from{transform:rotate(-2.5deg)}to{transform:rotate(5.5deg) translateX(5px)}}
+.tree .canopy{transform-box:fill-box;transform-origin:center bottom;animation:canopyShake 1.15s ease-in-out infinite alternate}
+@keyframes canopyShake{from{transform:rotate(-3deg) translateX(-2px)}to{transform:rotate(3.5deg) translateX(3px)}}
+.tree{transform:scale(.6) translateY(30px);opacity:0;transition:transform 1s var(--spring),opacity .6s ease}
+.scene-layer.in .tree{transform:scale(1) translateY(0);opacity:1}
+
+/* ============ 暴雪：月亮 ============ */
+.moon{position:absolute;left:64%;top:7%;width:72px;height:72px;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,#ffffff,#e3ebff 52%,#b3c2f0);
+  box-shadow:0 0 44px 14px rgba(190,212,255,.38),0 0 120px 50px rgba(150,175,240,.16);
+  transform:scale(.5) translateY(30px);transition:transform 1.1s var(--spring)}
+.scene-layer.in .moon{transform:scale(1) translateY(0)}
+.moon::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 62% 60%,rgba(140,155,200,.35) 0 8%,transparent 12%),
+             radial-gradient(circle at 40% 68%,rgba(140,155,200,.3) 0 5%,transparent 9%),
+             radial-gradient(circle at 68% 34%,rgba(140,155,200,.28) 0 6%,transparent 10%)}
+
+/* ============ 卡片内容 ============ */
+.card-content{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;padding:36px 30px 26px;pointer-events:none}
+.city{font-size:30px;font-weight:600;letter-spacing:.01em;text-shadow:0 2px 14px rgba(0,0,0,.35)}
+.myloc{margin-top:3px;font-size:13px;font-weight:500;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:5px}
+.myloc svg{width:11px;height:11px;opacity:.8}
+.temp-block{margin-top:14px;will-change:transform,filter,opacity}
+.temp{font-size:96px;font-weight:200;line-height:1;letter-spacing:-.03em;text-shadow:0 4px 30px rgba(0,0,0,.3)}
+.cond{margin-top:8px;font-size:19px;font-weight:500;color:rgba(255,255,255,.92)}
+.hl{margin-top:5px;font-size:14.5px;font-weight:500;color:rgba(255,255,255,.62)}
+.spacer{flex:1}
+.bottom{display:flex;flex-direction:column;gap:12px}
+
+/* 毛玻璃预报条 */
+.glass{
+  background:rgba(255,255,255,.075);
+  -webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.13);border-radius:24px;
+  box-shadow:0 14px 34px -12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14);
+}
+.hourly{padding:14px 18px 16px}
+.tip{font-size:13px;line-height:1.5;color:rgba(255,255,255,.78);padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.11);min-height:38px}
+.h-title{margin-top:10px;font-size:11px;font-weight:600;letter-spacing:.14em;color:rgba(255,255,255,.45)}
+.h-row{margin-top:10px;display:flex;justify-content:space-between}
+.h-item{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:42px;animation:rise .55s var(--ease-out) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+.h-time{font-size:11.5px;font-weight:500;color:rgba(255,255,255,.6)}
+.h-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9)}
+.h-icon svg{width:21px;height:21px}
+.h-pop{font-size:9.5px;font-weight:600;color:#7ec8ff;margin-top:-4px;height:10px}
+.h-temp{font-size:14.5px;font-weight:600}
+</style>
+<style>
+/* ============ 分段控制器 ============ */
+.segmented{
+  position:relative;display:flex;gap:2px;margin-top:24px;padding:5px;border-radius:24px;
+  background:rgba(255,255,255,.07);
+  -webkit-backdrop-filter:blur(30px) saturate(1.6);backdrop-filter:blur(30px) saturate(1.6);
+  border:1px solid rgba(255,255,255,.11);
+  box-shadow:0 18px 44px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.1);
+}
+.pill{position:absolute;top:5px;left:0;height:calc(100% - 10px);border-radius:19px;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.12));
+  box-shadow:0 6px 18px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.05);
+  transition:left .55s var(--spring),width .55s var(--spring)}
+.seg-btn{
+  position:relative;z-index:2;display:flex;align-items:center;gap:7px;
+  padding:11px 20px;border:none;border-radius:19px;background:transparent;cursor:pointer;
+  font-family:inherit;font-size:14.5px;font-weight:600;color:rgba(255,255,255,.5);
+  transition:color .35s ease,transform .18s ease;
+}
+.seg-btn svg{width:18px;height:18px;transition:transform .35s var(--spring)}
+.seg-btn:hover{color:rgba(255,255,255,.8)}
+.seg-btn:active{transform:scale(.92)}
+.seg-btn.active{color:#fff}
+.seg-btn.active svg{transform:scale(1.12)}
+.seg-btn .dot{position:absolute;bottom:5px;left:50%;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:0;transform:translateX(-50%) scale(0);transition:all .3s var(--spring)}
+.seg-btn.active .dot{opacity:.9;transform:translateX(-50%) scale(1)}
+
+@media (max-height:700px){.temp{font-size:80px}.card{min-height:520px}}
+@media (max-width:420px){.seg-btn{padding:11px 13px;font-size:13.5px}}
+</style>
+</head>
+<body>
+  <div class="blob b1" id="blob1"></div>
+  <div class="blob b2" id="blob2"></div>
+  <div class="noise"></div>
+
+  <div class="stage" id="stage">
+    <div class="card" id="card">
+      <div class="glow g-sunny"></div>
+      <div class="glow g-wind"></div>
+      <div class="glow g-rain"></div>
+      <div class="glow g-snow"></div>
+      <canvas id="scene"></canvas>
+      <div class="scene-dom" id="sceneDom"></div>
+      <div class="flash" id="flash"></div>
+      <div class="sheen" id="sheen"></div>
+
+      <div class="card-content">
+        <div class="city" id="city">库比蒂诺</div>
+        <div class="myloc">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+          我的位置
+        </div>
+        <div class="temp-block" id="tempBlock">
+          <div class="temp" id="temp">29°</div>
+          <div class="cond" id="cond">晴天</div>
+          <div class="hl" id="hl">最高32°&nbsp;&nbsp;最低21°</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="bottom">
+          <div class="hourly glass">
+            <div class="tip" id="tip">今天天气晴朗，紫外线较强，外出注意防晒。</div>
+            <div class="h-title">每小时预报</div>
+            <div class="h-row" id="hRow"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="segmented" id="segmented">
+      <div class="pill" id="pill"></div>
+      <button class="seg-btn active" data-w="sunny">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.8 1.8M17.2 17.2L19 19M19 5l-1.8 1.8M6.8 17.2L5 19"/></svg>
+        晴天<span class="dot"></span>
+      </button>
+      <button class="seg-btn" data-w="wind">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8.5h9.5a2.75 2.75 0 1 0-2.6-3.6M3 12.5h14.5a2.75 2.75 0 1 1-2.6 3.6M3 16.5h6"/></svg>
+        大风<span class="dot"></span>
+      </button>
+      <button class="seg-btn" data-w="rain">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 15a5 5 0 1 1 .9-9.92A6 6 0 0 1 19.5 7.6 4.25 4.25 0 0 1 18.5 15H7z"/><path d="M8.5 18l-1 2.5M13 18l-1 2.5M17.5 18l-1 2.5"/></svg>
+        暴雨<span class="dot"></span>
+      </button>
+      <button class="seg-btn" data-w="snow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 14a5 5 0 1 1 .9-9.92A6 6 0 0 1 19.5 6.6 4.25 4.25 0 0 1 18.5 14H7z"/><path d="M12 17v4M10.2 18l3.6 2M13.8 18l-3.6 2"/></svg>
+        暴雪<span class="dot"></span>
+      </button>
+    </div>
+  </div>
+<script>
+"use strict";
+/* ================= 基础引用 ================= */
+const card = document.getElementById('card');
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+const sceneDom = document.getElementById('sceneDom');
+const flashEl = document.getElementById('flash');
+let W = 0, H = 0;
+
+function resize(){
+  const r = card.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = r.width; H = r.height;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+new ResizeObserver(resize).observe(card);
+resize();
+
+/* ================= 工具 ================= */
+const R = Math.random;
+const TAU = Math.PI * 2;
+function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+
+function cloudSVG(fill){
+  return `<svg class="cloud-svg" viewBox="0 0 220 100"><g fill="${fill}">
+    <ellipse cx="58" cy="66" rx="48" ry="26"/><ellipse cx="112" cy="48" rx="54" ry="34"/>
+    <ellipse cx="164" cy="68" rx="44" ry="24"/><rect x="28" y="62" width="164" height="26" rx="13"/></g></svg>`;
+}
+function raySVG(count, r1, r2a, r2b, width, color, op){
+  let lines = '';
+  for(let i = 0; i < count; i++){
+    const a = (i / count) * TAU, r2 = i % 2 ? r2a : r2b;
+    const x1 = 100 + Math.cos(a) * r1, y1 = 100 + Math.sin(a) * r1;
+    const x2 = 100 + Math.cos(a) * r2, y2 = 100 + Math.sin(a) * r2;
+    lines += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+  }
+  return `<svg viewBox="0 0 200 200" style="width:100%;height:100%"><g stroke="${color}" stroke-width="${width}" stroke-linecap="round" opacity="${op}">${lines}</g></svg>`;
+}
+const treeSVG = `<svg class="tree" viewBox="0 0 140 175">
+  <g class="tree-inner">
+    <path d="M66 175 C64 136 62 114 66 90" stroke="#5d4630" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M66 120 C52 110 44 102 40 90" stroke="#5d4630" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M66 110 C78 102 86 94 90 84" stroke="#5d4630" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <g class="canopy">
+      <circle cx="42" cy="78" r="26" fill="#2e6b41"/><circle cx="90" cy="72" r="28" fill="#357a49"/>
+      <circle cx="66" cy="54" r="32" fill="#3f8a54"/><circle cx="56" cy="72" r="24" fill="#4a9a60" opacity=".9"/>
+      <circle cx="82" cy="48" r="17" fill="#57a86c" opacity=".8"/>
+    </g>
+  </g></svg>`;
+
+/* ================= 场景基类 & 管理 ================= */
+class Scene{
+  constructor(){ this.alpha = 0; this.target = 1; this.dead = false; this.layer = null; }
+  mount(layer){
+    this.layer = layer; sceneDom.appendChild(layer);
+    requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('in')));
+  }
+  exit(){ this.target = 0; if(this.layer){ this.layer.classList.remove('in'); this.layer.classList.add('out'); } }
+  destroy(){ if(this.layer) this.layer.remove(); }
+  update(dt, t){}
+  draw(c){}
+}
+let current = null, fading = [];
+function switchScene(Factory){
+  if(current){ current.exit(); fading.push(current); }
+  current = new Factory();
+}
+
+/* ================= 晴天 ================= */
+class SunnyScene extends Scene{
+  constructor(){
+    super();
+    this.mount(el(`<div class="scene-layer">
+      <div class="sun-wrap">
+        <div class="rays">${raySVG(12, 62, 96, 82, 3.6, '#ffd76a', .85)}</div>
+        <div class="rays2">${raySVG(12, 46, 66, 58, 3, '#ffe9a8', .6)}</div>
+        <div class="sun-core"></div>
+      </div>
+      <div class="flare f1"></div><div class="flare f2"></div><div class="flare f3"></div>
+    </div>`));
+    this.motes = Array.from({length: 34}, () => ({
+      x: R() * W, y: R() * H, r: .6 + R() * 1.9,
+      vx: 3 + R() * 9, vy: -(4 + R() * 10), p: R() * TAU, ps: .8 + R() * 1.6
+    }));
+  }
+  update(dt, t){
+    for(const m of this.motes){
+      m.x += m.vx * dt; m.y += m.vy * dt; m.p += m.ps * dt;
+      if(m.y < -8){ m.y = H + 8; m.x = R() * W; }
+      if(m.x > W + 8) m.x = -8;
+    }
+  }
+  draw(c){
+    // 环境暖光
+    let g = c.createRadialGradient(W * .68, H * .16, 10, W * .68, H * .16, W * .95);
+    g.addColorStop(0, 'rgba(255,170,60,.13)'); g.addColorStop(1, 'rgba(255,170,60,0)');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    for(const m of this.motes){
+      const a = .18 + .3 * (Math.sin(m.p) * .5 + .5);
+      c.beginPath(); c.arc(m.x, m.y, m.r, 0, TAU);
+      c.fillStyle = `rgba(255,228,160,${a.toFixed(3)})`; c.fill();
+    }
+  }
+}
+
+/* ================= 大风 ================= */
+class WindScene extends Scene{
+  constructor(){
+    super();
+    this.mount(el(`<div class="scene-layer">
+      <div class="cloud w1 windc"><div class="bob">${cloudSVG('#cdd7e4')}</div></div>
+      <div class="cloud w2 windc"><div class="bob">${cloudSVG('#b9c6d8')}</div></div>
+      <div class="cloud w3 windc"><div class="bob">${cloudSVG('#a9b8cc')}</div></div>
+      ${treeSVG}
+    </div>`));
+    this.streaks = []; this.leaves = []; this.spawnT = 0; this.leafT = .6;
+  }
+  update(dt, t){
+    this.spawnT -= dt;
+    if(this.spawnT <= 0){
+      this.spawnT = .1 + R() * .22;
+      this.streaks.push({
+        x: -140, y: H * (.1 + R() * .66),
+        len: 110 + R() * 160, sp: 560 + R() * 420,
+        curv: (R() - .5) * 110, wob: R() * TAU, age: 0
+      });
+    }
+    for(const s of this.streaks){ s.age += dt; s.x += s.sp * dt; }
+    this.streaks = this.streaks.filter(s => s.x < W + 160);
+
+    this.leafT -= dt;
+    if(this.leafT <= 0 && this.leaves.length < 14){
+      this.leafT = .35 + R() * .6;
+      this.leaves.push({
+        x: 30 + R() * 80, y: H - 395 + R() * 95,
+        vx: 150 + R() * 190, vy: -60 + R() * 90,
+        rot: R() * TAU, vr: (R() - .5) * 9, ph: R() * TAU,
+        size: 4.5 + R() * 4,
+        col: ['#7fae5c', '#a5c07a', '#c9a25e', '#8fbf6e'][(R() * 4) | 0]
+      });
+    }
+    for(const l of this.leaves){
+      l.ph += dt * 7; l.x += l.vx * dt; l.y += (l.vy + Math.sin(l.ph) * 60) * dt;
+      l.rot += l.vr * dt; l.vx *= (1 - dt * .12);
+    }
+    this.leaves = this.leaves.filter(l => l.x < W + 30 && l.y > -30 && l.y < H + 30);
+  }
+  draw(c){
+    for(const s of this.streaks){
+      const range = W + 300, prog = (s.x + 140) / range;
+      const a = Math.sin(Math.PI * Math.min(1, Math.max(0, prog))) * .68;
+      if(a <= .01) continue;
+      const g = c.createLinearGradient(s.x, s.y, s.x + s.len, s.y + s.curv * .15);
+      g.addColorStop(0, 'rgba(215,235,255,0)');
+      g.addColorStop(.55, `rgba(215,235,255,${a.toFixed(3)})`);
+      g.addColorStop(1, 'rgba(215,235,255,0)');
+      c.strokeStyle = g; c.lineWidth = 2; c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(s.x, s.y);
+      c.quadraticCurveTo(s.x + s.len * .5, s.y + s.curv * .5 + Math.sin(s.wob + s.age * 6) * 6, s.x + s.len, s.y + s.curv * .15);
+      c.stroke();
+    }
+    for(const l of this.leaves){
+      const a = Math.max(0, Math.min(1, (W + 20 - l.x) / 140)) * .85;
+      c.save(); c.translate(l.x, l.y); c.rotate(l.rot);
+      c.fillStyle = l.col; c.globalAlpha = a;
+      c.beginPath(); c.ellipse(0, 0, l.size, l.size * .45, 0, 0, TAU); c.fill();
+      c.restore(); c.globalAlpha = 1;
+    }
+  }
+}
+
+/* ================= 暴雨 ================= */
+class RainScene extends Scene{
+  constructor(){
+    super();
+    this.mount(el(`<div class="scene-layer">
+      <div class="cloud rc1 dark"><div class="bob">${cloudSVG('#39415a')}</div></div>
+      <div class="cloud rc2 dark"><div class="bob">${cloudSVG('#2c3450')}</div></div>
+    </div>`));
+    this.drops = []; this.ripples = []; this.puddle = 0;
+    this.bolt = null; this.nextBolt = 1.6 + R() * 2.5; this.time = 0;
+  }
+  newDrop(anyY){
+    const v = 980 + R() * 520;
+    return { x: R() * (W + 80) - 40, y: anyY ? R() * H : -30, v, vx: -v * .11,
+             len: v * .021, gy: H * .955 + R() * H * .028 };
+  }
+  strike(t){
+    const x0 = W * (.22 + R() * .56);
+    const segs = []; let x = x0, y = -12;
+    const endY = H * (.5 + R() * .14);
+    while(y < endY){
+      const nx = x + (R() - .5) * 46, ny = y + 22 + R() * 30;
+      segs.push([x, y, nx, ny]); x = nx; y = ny;
+    }
+    const branches = [];
+    for(let i = 2; i < segs.length - 2; i++){
+      if(R() < .3){
+        let [bx, by] = [segs[i][2], segs[i][3]];
+        const b = []; const dir = R() < .5 ? -1 : 1;
+        for(let j = 0; j < 3 + R() * 3; j++){
+          const nx = bx + dir * (14 + R() * 26), ny = by + 14 + R() * 22;
+          b.push([bx, by, nx, ny]); bx = nx; by = ny;
+        }
+        branches.push(b);
+      }
+    }
+    this.bolt = { segs, branches, age: 0 };
+    flashEl.classList.remove('strike'); void flashEl.offsetWidth; flashEl.classList.add('strike');
+    this.nextBolt = t + 2.8 + R() * 4.5;
+  }
+  update(dt, t){
+    this.time = t;
+    while(this.drops.length < 150) this.drops.push(this.newDrop(true));
+    for(let i = this.drops.length - 1; i >= 0; i--){
+      const d = this.drops[i];
+      d.y += d.v * dt; d.x += d.vx * dt;
+      if(d.y >= d.gy){
+        if(R() < .8) this.ripples.push({ x: d.x, y: d.gy, rx: 2, a: .5, max: 16 + R() * 16 });
+        this.drops[i] = this.newDrop(false);
+      }
+    }
+    this.puddle = Math.min(1, this.puddle + dt * .14);
+    for(let i = this.ripples.length - 1; i >= 0; i--){
+      const r = this.ripples[i];
+      r.rx += 78 * dt; r.a -= dt * 1.5;
+      if(r.a <= 0 || r.rx > r.max + 14) this.ripples.splice(i, 1);
+    }
+    if(!this.bolt && t > this.nextBolt) this.strike(t);
+    if(this.bolt){ this.bolt.age += dt; if(this.bolt.age > .4) this.bolt = null; }
+  }
+  draw(c){
+    // 闪电
+    if(this.bolt){
+      const a = this.bolt.age;
+      const flick = a < .07 ? 1 : a < .13 ? .25 : a < .21 ? .95 : Math.max(0, 1 - (a - .21) / .19);
+      c.save();
+      c.strokeStyle = `rgba(214,228,255,${flick})`;
+      c.shadowColor = 'rgba(170,195,255,.9)'; c.shadowBlur = 14;
+      c.lineWidth = 2.4; c.lineJoin = 'round'; c.lineCap = 'round';
+      c.beginPath();
+      for(const s of this.bolt.segs){ c.moveTo(s[0], s[1]); c.lineTo(s[2], s[3]); }
+      c.stroke();
+      c.lineWidth = 1.3;
+      for(const b of this.bolt.branches){
+        c.beginPath();
+        for(const s of b){ c.moveTo(s[0], s[1]); c.lineTo(s[2], s[3]); }
+        c.stroke();
+      }
+      c.restore();
+    }
+    // 水洼
+    const Y0 = H - 4, top = Y0 - this.puddle * 14;
+    let g = c.createLinearGradient(0, top, 0, Y0);
+    g.addColorStop(0, `rgba(150,180,240,${(.2 * this.puddle).toFixed(3)})`);
+    g.addColorStop(1, `rgba(70,100,170,${(.05 * this.puddle).toFixed(3)})`);
+    c.beginPath(); c.moveTo(0, Y0);
+    for(let x = 0; x <= W; x += 8) c.lineTo(x, top + Math.sin(x * .045 + this.time * 2.2) * 1.6 * this.puddle);
+    c.lineTo(W, Y0); c.closePath(); c.fillStyle = g; c.fill();
+    if(this.puddle > .05){
+      c.beginPath();
+      for(let x = 0; x <= W; x += 8){
+        const y = top + Math.sin(x * .045 + this.time * 2.2) * 1.6 * this.puddle;
+        x === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+      }
+      c.strokeStyle = `rgba(205,225,255,${(.3 * this.puddle).toFixed(3)})`; c.lineWidth = 1.2; c.stroke();
+    }
+    // 涟漪
+    for(const r of this.ripples){
+      c.beginPath(); c.ellipse(r.x, r.y, r.rx, r.rx * .3, 0, 0, TAU);
+      c.strokeStyle = `rgba(190,212,248,${(r.a * .55).toFixed(3)})`; c.lineWidth = 1.2; c.stroke();
+    }
+    // 雨滴
+    c.lineWidth = 1.4; c.lineCap = 'round';
+    for(const d of this.drops){
+      const gg = c.createLinearGradient(d.x, d.y - d.len, d.x, d.y);
+      gg.addColorStop(0, 'rgba(174,196,228,0)');
+      gg.addColorStop(1, 'rgba(174,196,228,.5)');
+      c.strokeStyle = gg;
+      c.beginPath(); c.moveTo(d.x - d.vx * .021, d.y - d.len); c.lineTo(d.x, d.y); c.stroke();
+    }
+  }
+}
+
+/* ================= 暴雪 ================= */
+class SnowScene extends Scene{
+  constructor(){
+    super();
+    this.mount(el(`<div class="scene-layer">
+      <div class="moon"></div>
+      <div class="cloud sc1 pale"><div class="bob">${cloudSVG('#8f9bb3')}</div></div>
+      <div class="cloud sc2 pale"><div class="bob">${cloudSVG('#7e8aa3')}</div></div>
+    </div>`));
+    this.flakes = [];
+    this.colW = 6;
+    this.cols = new Float32Array(Math.ceil(W / this.colW) + 2);
+    this.maxH = H * .15;
+  }
+  newFlake(anyY){
+    const r = .9 + R() * 2.7;
+    return { x: R() * W, y: anyY ? R() * H : -8, r,
+             vy: 34 + r * 24 + R() * 18, ph: R() * TAU, sw: 12 + R() * 26,
+             rot: R() * TAU, vr: (R() - .5) * 2.4 };
+  }
+  smooth(){
+    const c = this.cols;
+    for(let i = 1; i < c.length - 1; i++) c[i] = (c[i - 1] + c[i] * 2 + c[i + 1]) / 4;
+  }
+  update(dt, t){
+    while(this.flakes.length < 170) this.flakes.push(this.newFlake(true));
+    const wind = Math.sin(t * .5) * 16 + Math.sin(t * 1.7) * 7;
+    for(let i = 0; i < this.flakes.length; i++){
+      const f = this.flakes[i];
+      f.x += (Math.sin(t * 1.25 + f.ph) * f.sw + wind) * dt * .9;
+      f.y += f.vy * dt; f.rot += f.vr * dt;
+      if(f.x < -10) f.x = W + 8; if(f.x > W + 10) f.x = -8;
+      const col = Math.max(0, Math.min(this.cols.length - 1, Math.round(f.x / this.colW)));
+      const gy = H - 3 - this.cols[col];
+      if(f.y >= gy){
+        if(this.cols[col] < this.maxH){
+          this.cols[col] = Math.min(this.maxH, this.cols[col] + f.r * .5);
+          if(col > 0) this.cols[col - 1] = Math.min(this.maxH, this.cols[col - 1] + f.r * .22);
+          if(col < this.cols.length - 1) this.cols[col + 1] = Math.min(this.maxH, this.cols[col + 1] + f.r * .22);
+          if(R() < .3) this.smooth();
+        }
+        this.flakes[i] = this.newFlake(false);
+      }
+    }
+  }
+  draw(c){
+    // 积雪
+    const n = this.cols.length;
+    c.beginPath(); c.moveTo(-4, H + 4);
+    let px = 0, py = H - 3 - this.cols[0];
+    c.lineTo(px, py);
+    for(let i = 1; i < n; i++){
+      const x = i * this.colW, y = H - 3 - this.cols[i];
+      c.quadraticCurveTo(px + this.colW / 2, py, x, y);
+      px = x; py = y;
+    }
+    c.lineTo(W + 4, H + 4); c.closePath();
+    let g = c.createLinearGradient(0, H - this.maxH - 6, 0, H);
+    g.addColorStop(0, 'rgba(240,246,255,.96)'); g.addColorStop(1, 'rgba(178,196,228,.72)');
+    c.fillStyle = g; c.fill();
+    // 雪面高光
+    c.beginPath();
+    for(let i = 0; i < n; i++){
+      const x = i * this.colW, y = H - 3 - this.cols[i];
+      i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+    }
+    c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.4;
+    c.shadowColor = 'rgba(200,220,255,.6)'; c.shadowBlur = 6; c.stroke(); c.shadowBlur = 0;
+    // 雪花
+    for(const f of this.flakes){
+      const a = .5 + .4 * (f.r / 3.6);
+      if(f.r > 2.1){
+        c.save(); c.translate(f.x, f.y); c.rotate(f.rot);
+        c.strokeStyle = `rgba(255,255,255,${Math.min(1, a + .15).toFixed(3)})`;
+        c.lineWidth = 1.1; c.lineCap = 'round';
+        const L = f.r * 2.3;
+        for(let k = 0; k < 3; k++){
+          c.rotate(Math.PI / 3);
+          c.beginPath(); c.moveTo(-L, 0); c.lineTo(L, 0); c.stroke();
+        }
+        c.restore();
+      }else{
+        c.beginPath(); c.arc(f.x, f.y, f.r, 0, TAU);
+        c.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`; c.fill();
+      }
+    }
+  }
+}
+</script>
+<script>
+"use strict";
+/* ================= 天气配置 ================= */
+const ICONS = {
+  sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.8 1.8M17.2 17.2L19 19M19 5l-1.8 1.8M6.8 17.2L5 19"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg>`,
+  wind: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8.5h9.5a2.75 2.75 0 1 0-2.6-3.6M3 12.5h14.5a2.75 2.75 0 1 1-2.6 3.6M3 16.5h6"/></svg>`,
+  rain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 15a5 5 0 1 1 .9-9.92A6 6 0 0 1 19.5 7.6 4.25 4.25 0 0 1 18.5 15H7z"/><path d="M8.5 18l-1 2.5M13 18l-1 2.5M17.5 18l-1 2.5"/></svg>`,
+  snow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 14a5 5 0 1 1 .9-9.92A6 6 0 0 1 19.5 6.6 4.25 4.25 0 0 1 18.5 14H7z"/><path d="M12 17v4M10.2 18l3.6 2M13.8 18l-3.6 2"/></svg>`,
+  bolt: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>`
+};
+const CFG = {
+  sunny: {
+    temp: '29°', cond: '晴天', hl: '最高32°&nbsp;&nbsp;最低21°',
+    tip: '今天天气晴朗，紫外线较强，外出注意防晒。',
+    blobs: ['#7c4a03', '#1e3a8a'],
+    hours: [['现在', 'sun', '29°', ''], ['15时', 'sun', '30°', ''], ['16时', 'sun', '31°', ''], ['17时', 'sun', '30°', ''], ['18时', 'sun', '28°', ''], ['19时', 'moon', '26°', '']]
+  },
+  wind: {
+    temp: '18°', cond: '大风', hl: '最高21°&nbsp;&nbsp;最低14°',
+    tip: '西北风6级，阵风可达每小时45公里，注意高空坠物。',
+    blobs: ['#0f5148', '#0c2f4a'],
+    hours: [['现在', 'wind', '18°', ''], ['15时', 'wind', '18°', ''], ['16时', 'wind', '17°', ''], ['17时', 'wind', '16°', ''], ['18时', 'wind', '15°', ''], ['19时', 'wind', '14°', '']]
+  },
+  rain: {
+    temp: '16°', cond: '暴雨', hl: '最高18°&nbsp;&nbsp;最低13°',
+    tip: '预计有强降雨并伴有雷电，出行请携带雨具。',
+    blobs: ['#1d3a8f', '#0b1e3f'],
+    hours: [['现在', 'rain', '16°', '80%'], ['15时', 'rain', '16°', '90%'], ['16时', 'bolt', '15°', '70%'], ['17时', 'rain', '15°', '60%'], ['18时', 'rain', '14°', '45%'], ['19时', 'rain', '14°', '30%']]
+  },
+  snow: {
+    temp: '-4°', cond: '暴雪', hl: '最高-1°&nbsp;&nbsp;最低-8°',
+    tip: '暴雪蓝色预警，道路结冰，请注意防寒保暖。',
+    blobs: ['#3b4a6b', '#152238'],
+    hours: [['现在', 'snow', '-4°', ''], ['15时', 'snow', '-4°', ''], ['16时', 'snow', '-5°', ''], ['17时', 'snow', '-5°', ''], ['18时', 'snow', '-6°', ''], ['19时', 'snow', '-7°', '']]
+  }
+};
+const FACTORY = { sunny: SunnyScene, wind: WindScene, rain: RainScene, snow: SnowScene };
+
+/* ================= 内容更新 ================= */
+const tempBlock = document.getElementById('tempBlock');
+const tempEl = document.getElementById('temp');
+const condEl = document.getElementById('cond');
+const hlEl = document.getElementById('hl');
+const tipEl = document.getElementById('tip');
+const hRow = document.getElementById('hRow');
+const blob1 = document.getElementById('blob1');
+const blob2 = document.getElementById('blob2');
+const glows = { sunny: document.querySelector('.g-sunny'), wind: document.querySelector('.g-wind'),
+                rain: document.querySelector('.g-rain'), snow: document.querySelector('.g-snow') };
+
+function renderHours(cfg){
+  hRow.innerHTML = cfg.hours.map((h, i) =>
+    `<div class="h-item" style="animation-delay:${i * 55}ms">
+      <div class="h-time">${h[0]}</div>
+      <div class="h-icon">${ICONS[h[1]] || ICONS.sun}</div>
+      <div class="h-pop">${h[3]}</div>
+      <div class="h-temp">${h[2]}</div>
+    </div>`).join('');
+}
+
+async function swapContent(name){
+  const cfg = CFG[name];
+  const out = tempBlock.animate(
+    [{ opacity: 1, filter: 'blur(0px)', transform: 'translateY(0)' },
+     { opacity: 0, filter: 'blur(14px)', transform: 'translateY(12px)' }],
+    { duration: 240, easing: 'ease-in', fill: 'forwards' });
+  tipEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' });
+  await out.finished;
+  tempEl.textContent = cfg.temp;
+  condEl.textContent = cfg.cond;
+  hlEl.innerHTML = cfg.hl;
+  tipEl.textContent = cfg.tip;
+  renderHours(cfg);
+  tempBlock.animate(
+    [{ opacity: 0, filter: 'blur(14px)', transform: 'translateY(-10px)' },
+     { opacity: 1, filter: 'blur(0px)', transform: 'translateY(0)' }],
+    { duration: 460, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'forwards' });
+  tipEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, fill: 'forwards' });
+}
+
+function applyTheme(name){
+  for(const k in glows) glows[k].style.opacity = k === name ? 1 : 0;
+  blob1.style.backgroundColor = CFG[name].blobs[0];
+  blob2.style.backgroundColor = CFG[name].blobs[1];
+}
+
+/* ================= 分段控制器 ================= */
+const segBtns = [...document.querySelectorAll('.seg-btn')];
+const pill = document.getElementById('pill');
+let activeName = 'sunny', switching = false;
+
+function movePill(btn){
+  pill.style.left = btn.offsetLeft + 'px';
+  pill.style.width = btn.offsetWidth + 'px';
+}
+function select(name){
+  if(name === activeName || switching) return;
+  switching = true;
+  setTimeout(() => switching = false, 500);
+  activeName = name;
+  segBtns.forEach(b => b.classList.toggle('active', b.dataset.w === name));
+  movePill(segBtns.find(b => b.dataset.w === name));
+  applyTheme(name);
+  swapContent(name);
+  switchScene(FACTORY[name]);
+}
+segBtns.forEach(b => b.addEventListener('click', () => select(b.dataset.w)));
+window.addEventListener('resize', () => movePill(segBtns.find(b => b.dataset.w === activeName)));
+
+/* ================= 卡片 3D 倾斜 & 高光 ================= */
+let tRX = 0, tRY = 0, cRX = 0, cRY = 0;
+const sheen = document.getElementById('sheen');
+stage.addEventListener('pointermove', e => {
+  const r = card.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  tRY = (x - .5) * 8; tRX = -(y - .5) * 8;
+  sheen.style.setProperty('--mx', (x * 100) + '%');
+  sheen.style.setProperty('--my', (y * 100) + '%');
+});
+stage.addEventListener('pointerleave', () => { tRX = 0; tRY = 0; });
+
+/* ================= 主循环 ================= */
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const t = now / 1000;
+  // 透明度缓动
+  if(current) current.alpha += (current.target - current.alpha) * Math.min(1, dt * 2.6);
+  for(let i = fading.length - 1; i >= 0; i--){
+    const s = fading[i];
+    s.alpha += (0 - s.alpha) * Math.min(1, dt * 4.5);
+    if(s.alpha < .015){ s.destroy(); fading.splice(i, 1); }
+  }
+  // 更新 & 绘制
+  ctx.clearRect(0, 0, W, H);
+  for(const s of fading){ s.update(dt, t); ctx.save(); ctx.globalAlpha = s.alpha; s.draw(ctx); ctx.restore(); }
+  if(current){ current.update(dt, t); ctx.save(); ctx.globalAlpha = current.alpha; current.draw(ctx); ctx.restore(); }
+  // 倾斜
+  cRX += (tRX - cRX) * Math.min(1, dt * 7);
+  cRY += (tRY - cRY) * Math.min(1, dt * 7);
+  card.style.transform = `perspective(1300px) rotateX(${cRX.toFixed(2)}deg) rotateY(${cRY.toFixed(2)}deg)`;
+  requestAnimationFrame(loop);
+}
+
+/* ================= 初始化 ================= */
+function init(){
+  applyTheme('sunny');
+  renderHours(CFG.sunny);
+  switchScene(SunnyScene);
+  movePill(segBtns[0]);
+  requestAnimationFrame(loop);
+}
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => movePill(segBtns[0]));
+init();
+</script>
+</body>
+</html>
