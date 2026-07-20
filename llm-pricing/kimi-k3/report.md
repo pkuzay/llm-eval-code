@@ -1,62 +1,53 @@
-关于这个请求，我需要先说明一个重要限制
+# Kimi-K3 evaluation result
 
-我的训练数据截止于 2025年初，而你列出的这些型号——GPT 5.5、DeepSeek V4、Claude Opus 4.7、Kimi 2.6、混元 HY3 Preview、Gemini 3.1 Pro——在我的知识库中都不存在，它们应该都是在我训练截止之后发布的版本。
+- Status: Partially satisfied
+- Model: kimi-k3
+- Evaluation note: The response covers all requested models with a structured price table and scenario analysis. Most core prices align with official sources, but GPT-5.5 now uses short/long-context price tiers rather than the single launch-price figure shown here. Several benchmark scores, price-change claims, and self-hosting break-even figures also lack source links.
 
-因此，我无法提供这些具体型号的真实价格。如果我编造一份价格表，那将是严重的误导（AI 幻觉），对需要真实调研数据的你毫无价值。
+## Raw assistant answer
 
-不过，我可以提供以下两方面的帮助：
+我来帮你调研这几个模型的 API 价格。这些都是较新的模型，我先搜索最新的官方定价信息。
+已找到大部分数据，还缺 HY3 preview 的信息，另外需要核实 Gemini 3.1 Pro 的官方定价（两个来源有出入）。继续搜索：
+调研完成。以下数据来自各厂商官方定价页及第三方价格追踪站（截至 2026-07-19/20），单位统一为**每百万 tokens**。
 
-一、截至我知识截止时间（2025年初）各厂商前代旗舰的 API 定价参考
+## 一、API 价格总表
 
-厂商	模型	输入价格 (每百万 token)	输出价格 (每百万 token)	备注
-OpenAI	GPT-4o	$2.50（缓存命中 $1.25）	$10.00	主力通用模型
-OpenAI	o1	$15.00	$60.00	推理模型
-OpenAI	o3-mini	$1.10	$4.40	高性价比推理
-DeepSeek	DeepSeek-V3	$0.27（缓存命中 $0.07）	$1.10	价格屠夫
-DeepSeek	DeepSeek-R1	$0.55（缓存命中 $0.14）	$2.19	推理模型，极便宜
-Anthropic	Claude 3 Opus	$15.00	$75.00	当时最贵的旗舰
-Anthropic	Claude 3.5/3.7 Sonnet	$3.00	$15.00	均衡型主力
-Anthropic	Claude 3.5 Haiku	$0.80	$4.00	轻量款
-Moonshot	Kimi (moonshot-v1-128k)	¥60	¥60	按上下文分档，8k 档 ¥12
-Google	Gemini 2.0 Flash	$0.10	$0.40	当时最便宜梯队
-Google	Gemini 2.5 Pro	~$1.25（≤200k）	~$10.00	2025年3月发布
+| 模型 | 输入 | 输出 | 缓存输入 | 上下文窗口 | 发布/状态 |
+|---|---|---|---|---|---|
+| **GPT-5.5**（OpenAI） | $5.00 | $30.00 | $0.50 | ~105 万 | 2026-04-24 发布 |
+| ├ GPT-5.5 Pro | $30.00 | $180.00 | — | ~105 万 | 顶配档，价格为标准版 6 倍 |
+| **Claude Opus 4.7**（Anthropic） | $5.00 | $25.00 | $0.50 | 100 万 | 2026-04-16 发布 |
+| **DeepSeek V4 Pro** | $0.435 | $0.87 | $0.0036 | 100 万 | 2026-04-24 发布 |
+| ├ DeepSeek V4 Flash | $0.14 | $0.28 | $0.0028 | 100 万 | 第三方渠道低至 $0.09/$0.18 |
+| **Kimi K2.6**（Moonshot） | $0.95 | $4.00 | $0.16 | 26.2 万 | 开源，可自部署 |
+| **HY3 Preview**（腾讯混元） | ¥2.00（≈$0.28） | ¥8.00（≈$1.11） | ¥0.80 | 26.2 万 | 腾讯云官方价 |
+| **Gemini 3.1 Pro**（Google，≤20 万 tokens） | $2.00 | $12.00 | $0.20 | 100 万 | 2026-02-19 发布 |
+| └ Gemini 3.1 Pro（>20 万 tokens） | $4.00 | $18.00 | $0.40 | — | 长上下文整体跳档 |
 
-⚠️ 以上是历史快照，仅供参考趋势，不代表当前价格。
+**补充说明：**
 
-二、基于已知信息的性价比分析框架
+- **HY3 值得单独注意**：正式版 Hy3 定价已降至 ¥1/¥4（缓存 ¥0.25），比 Preview 版还便宜一半，且官方限时免费到 **2026 年 7 月 22 日**（后天截止）；第三方渠道（GMICloud/OpenRouter）上 Hy3 Preview 甚至只要 $0.063/$0.21。
+- **各家折扣机制**：OpenAI、Anthropic、DeepSeek 均有 Batch API 半价；Google 的 Batch/Flex 档为 $1/$6，Priority 档则高达 $3.6/$21.6；Anthropic 缓存写入为 1.25 倍输入价、读取约 1 折。
+- **同门更新款**：GPT-5.6 系列（Sol $5/$30、Terra $2.5/$15、Luna $1/$6）已于 7 月 9 日 GA；Claude Opus 4.8 已发布且与 4.7 同价（$5/$25）；Gemini 3.5 Flash（$1.5/$9）是 Google 当前主推。如果你还没锁定版本，这些同价或低价的新款也值得纳入评估。
 
-1. 价格竞争格局（截至 2025 年初的趋势）
+## 二、性价比分析
 
-DeepSeek 是整个市场的价格锚点，V3/R1 以接近 GPT-4o/o1 级别的能力，把价格打到对手的 1/10～1/30，迫使全行业降价。可以预期 V4 大概率延续低价策略。
+用「综合能力指数（第三方基准，满分~50）÷ 混合成本（按 3:1 输入输出比估算）」做粗略的性价比标尺：
 
-Google 走"高性能+激进定价"路线，Flash 系列是当时性价比之王，且免费额度慷慨。
+| 模型 | 综合智能分（百分位） | 混合成本/百万 tokens | 性价比评级 | 特点 |
+|---|---|---|---|---|
+| **Gemini 3.1 Pro** | 46.5（99%），GPQA 94.1 | ~$4.5 | ★★★★☆ | 六者中能力最强，价格却只有 GPT/Claude 一半 |
+| **Claude Opus 4.7** | 42.7（97%），GPQA 88.5 | ~$10 | ★★★☆☆ | 能力强但贵；同价可上更新的 Opus 4.8 |
+| **GPT-5.5** | 35.4（91%），GPQA 76.8 | ~$11.25 | ★★☆☆☆ | 价格最高档而跑分不占优，胜在生态和工具链 |
+| **HY3 Preview** | 33.6（86%），GPQA 86.7 | ~¥3.5（≈$0.49） | ★★★★★ | 官方价仅为 GPT-5.5 的 ~1/20，GPQA 反超 GPT-5.5 |
+| **DeepSeek V4 Pro** | 31.2（82%），GPQA 71.7 | ~$0.54 | ★★★★★ | 缓存命中价几乎为零，高并发成本最低 |
+| **Kimi K2.6** | 基准站无同口径分数 | ~$1.71 | ★★★★☆ | Agentic 编码和长程任务是强项，工具调用表现突出 |
 
-Anthropic 的 Opus 系列历来是旗舰定价（3 Opus 高达 $75 输出），主打最强编码/写作质量，Sonnet 才是走量的性价比款。
+**分场景建议：**
 
-OpenAI 定价居中偏上，但缓存命中折扣大，生态最成熟。
+1. **追求极致能力、预算不敏感**：Gemini 3.1 Pro 是当前「能力/价格」双优的选择——能力分最高，价格却只有 Opus 4.7 的 40%、GPT-5.5 的 40%。注意 prompt 超 20 万 tokens 会整体涨价一倍。
+2. **大规模生产调用、成本敏感**：DeepSeek V4 Pro 和 HY3 是第一梯队。V4 Pro 输出仅 $0.87/百万，缓存命中价 $0.0036 几乎免费；HY3 正式版 ¥1/¥4 且这两天还限免，中文场景和国产生态对接更顺。
+3. **Agent / 编码场景**：Kimi K2.6 开源可自部署，API 价 $0.95/$4 在编码类模型中很便宜；按官方测算，日调用 50K 次以内用 API 比自建划算（自托管盈亏平衡点约 3.26 亿 tokens/天）。Claude Opus 系列在指令遵循和长上下文工程任务上口碑最好，但需接受 5-10 倍溢价。
+4. **GPT-5.5 的定位略显尴尬**：价格对标旗舰、跑分已被 Gemini 3.1 Pro 和 Opus 4.7 压制，除非是深度绑定 OpenAI 生态（Assistants API、工具链），否则纯按性价比不推荐；同门的 GPT-5.6 Terra（$2.5/$15）是更理性的选择。
 
-**国产模型（Kimi、混元）**按人民币计价且常有免费额度，对国内开发者有合规和延迟优势。
-
-2. 评估性价比的正确姿势（建议你用这个方法做实际调研）
-
-不要只看单价，要看 完成任务的实际成本 = 单价 × 该模型解决你任务所需的 token 数（弱模型可能需多次重试）
-
-关注 缓存命中折扣（OpenAI/DeepSeek/Anthropic 都有，差距可达 10 倍）
-
-关注 批处理 API（Batch API 通常 5 折）
-
-推理模型要区分 输出 token 是否包含思考链（思考 token 也计费，会显著拉高实际成本）
-
-用你自己的任务在 LMArena、Artificial Analysis 等榜单上核对质量/价格比
-
-三、获取实时价格的官方渠道
-
-厂商	定价页
-OpenAI	platform.openai.com/docs/pricing
-DeepSeek	api-docs.deepseek.com/quick_start/pricing
-Anthropic	anthropic.com/pricing
-Moonshot Kimi	platform.moonshot.cn
-腾讯混元	cloud.tencent.com/product/hunyuan
-Google	ai.google.dev/pricing
-
-如果你能把这些模型的官方定价页面内容贴给我，我很乐意帮你做完整的对比表格和性价比分析。
+**几个容易踩的坑**：推理类模型的「思考 tokens」按输出价计费，复杂任务 output 可能膨胀 30% 以上；Google 长文本超 200K 整单跳档而非只对超出部分加价；价格变动极快（DeepSeek V4 Pro 三个月内降价 75%），签约前务必以官方页面实时价格为准。
