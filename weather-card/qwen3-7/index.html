@@ -1,923 +1,500 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iOS 18 Weather Card</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#04050b"/>
+<title>iOS 18 · 天气卡片</title>
+<style>
+/* ========== 可动画的自定义属性（让渐变平滑过渡） ========== */
+@property --sky1{syntax:'<color>';inherits:true;initial-value:#0a1a3a;}
+@property --sky2{syntax:'<color>';inherits:true;initial-value:#1d4a80;}
+@property --sky3{syntax:'<color>';inherits:true;initial-value:#9a622d;}
+@property --amb1{syntax:'<color>';inherits:true;initial-value:#3a2a0f;}
+@property --amb2{syntax:'<color>';inherits:true;initial-value:#143a5e;}
 
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #0a0a0f;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
-            overflow: hidden;
-        }
+:root{
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --smooth:cubic-bezier(.45,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;
+  background:#04050b;color:#fff;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  transition:--sky1 1.4s var(--smooth),--sky2 1.4s var(--smooth),--sky3 1.4s var(--smooth),
+             --amb1 1.4s var(--smooth),--amb2 1.4s var(--smooth);
+}
 
-        /* Ambient Background */
-        .ambient-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 0;
-        }
+/* ========== 四套天气主题（深色） ========== */
+body[data-weather="sunny"]{--sky1:#0a1a3a;--sky2:#1d4a80;--sky3:#9a622d;--amb1:#3a2a0f;--amb2:#143a5e;--sway:1.6deg;--leaf:1deg}
+body[data-weather="windy"]{--sky1:#0b1a23;--sky2:#27505b;--sky3:#3f6f6c;--amb1:#0e333b;--amb2:#182642;--sway:8.5deg;--leaf:3deg}
+body[data-weather="rainy"]{--sky1:#04060e;--sky2:#131e3c;--sky3:#2b3a61;--amb1:#0e1737;--amb2:#251a41;--sway:4deg;--leaf:2deg}
+body[data-weather="snowy"]{--sky1:#0a1126;--sky2:#22396b;--sky3:#5b76a8;--amb1:#1b2f57;--amb2:#2c2449;--sway:1.2deg;--leaf:.8deg}
 
-        .ambient-bg.sunny {
-            background: radial-gradient(ellipse at 30% 20%, rgba(255, 149, 0, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, rgba(255, 69, 58, 0.08) 0%, transparent 40%),
-                        #0a0a0f;
-        }
+/* ========== 页面氛围光 ========== */
+.amb{position:fixed;width:70vmax;height:70vmax;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.amb.a{background:radial-gradient(circle,var(--amb1) 0%,transparent 65%);top:-25vmax;left:-20vmax;opacity:.55;animation:floatA 26s ease-in-out infinite alternate}
+.amb.b{background:radial-gradient(circle,var(--amb2) 0%,transparent 65%);bottom:-30vmax;right:-22vmax;opacity:.5;animation:floatB 32s ease-in-out infinite alternate}
+@keyframes floatA{to{transform:translate(9vmax,7vmax) scale(1.15)}}
+@keyframes floatB{to{transform:translate(-8vmax,-6vmax) scale(1.1)}}
 
-        .ambient-bg.windy {
-            background: radial-gradient(ellipse at 50% 30%, rgba(100, 210, 255, 0.1) 0%, transparent 50%),
-                        radial-gradient(ellipse at 20% 70%, rgba(72, 199, 142, 0.08) 0%, transparent 40%),
-                        #0a0a0f;
-        }
+/* ========== 卡片本体 ========== */
+.stage{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px}
+.card{
+  position:relative;width:min(392px,92vw);height:min(700px,88vh);
+  border-radius:46px;overflow:hidden;background:#0a0f1e;isolation:isolate;
+  box-shadow:0 60px 120px -30px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.09);
+  animation:enter .9s var(--spring) both;
+}
+@keyframes enter{from{opacity:0;transform:translateY(26px) scale(.96)}}
+.card::after{ /* 玻璃边缘高光 */
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:60;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.06),
+             inset 1px 0 0 rgba(255,255,255,.08),inset -1px 0 0 rgba(255,255,255,.08);
+}
+.sky{position:absolute;inset:0;z-index:0;
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 52%,var(--sky3) 100%)}
 
-        .ambient-bg.rainy {
-            background: radial-gradient(ellipse at 40% 30%, rgba(50, 100, 180, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 60%, rgba(100, 50, 150, 0.1) 0%, transparent 40%),
-                        #0a0a0f;
-        }
+/* ========== 视差层 ========== */
+.layer{position:absolute;inset:-20px;pointer-events:none;will-change:transform;
+  transform:translate3d(calc(var(--px,0)*var(--depth,8)*1px),calc(var(--py,0)*var(--depth,8)*1px),0)}
 
-        .ambient-bg.snowy {
-            background: radial-gradient(ellipse at 50% 40%, rgba(180, 200, 255, 0.1) 0%, transparent 50%),
-                        radial-gradient(ellipse at 30% 70%, rgba(100, 150, 255, 0.06) 0%, transparent 40%),
-                        #0a0a0f;
-        }
+/* ========== ☀️ 太阳：光线旋转 + 双层光晕呼吸 ========== */
+.sun-layer{--depth:18;z-index:2}
+.sun{position:absolute;top:9%;right:6%;width:170px;height:170px;
+  opacity:0;transform:translateY(46px) scale(.7);
+  transition:opacity 1s var(--smooth),transform 1.3s var(--spring)}
+body[data-weather="sunny"] .sun{opacity:1;transform:none}
+.sun .glow{position:absolute;inset:-120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,187,92,.5) 0%,rgba(255,150,50,.16) 42%,transparent 70%);
+  animation:breathe 4.5s ease-in-out infinite}
+.sun .halo{position:absolute;inset:-46px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,214,130,.55) 0%,rgba(255,190,90,.18) 45%,transparent 72%);
+  animation:breathe 3.2s ease-in-out .6s infinite}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.14);opacity:1}}
+.sun .rays{position:absolute;inset:-58px;animation:spin 46s linear infinite}
+.sun .rays line{stroke:rgba(255,222,150,.85)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sun .core{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,#fffbe8 0%,#ffe9a8 30%,#ffc24d 62%,#ff8f2b 100%);
+  box-shadow:0 0 44px 10px rgba(255,190,80,.75),0 0 120px 40px rgba(255,150,40,.35)}
 
-        /* Main Card */
-        .weather-card {
-            position: relative;
-            width: 380px;
-            height: 560px;
-            border-radius: 32px;
-            overflow: hidden;
-            z-index: 1;
-            box-shadow: 
-                0 40px 80px rgba(0, 0, 0, 0.6),
-                0 0 1px rgba(255, 255, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        }
+/* ========== ☁️ 云（JS 驱动漂移，速度随天气平滑变化） ========== */
+.cloud-layer{--depth:11;z-index:3}
+.cloud{position:absolute;color:#fff;will-change:transform;
+  filter:blur(.5px) drop-shadow(0 10px 24px rgba(0,0,0,.25));
+  transition:color 1.2s var(--smooth),opacity 1.2s,top 1.4s var(--smooth)}
+.cloud svg{display:block;width:100%;height:auto}
+.c1{top:13%;width:52%;opacity:.9}
+.c2{top:27%;width:38%;opacity:.65}
+.c3{top:5%;width:30%;opacity:.5}
+body[data-weather="sunny"] .cloud{color:rgba(255,246,228,.55)}
+body[data-weather="sunny"] .c1{top:32%}
+body[data-weather="windy"] .cloud{color:rgba(222,236,242,.85)}
+body[data-weather="rainy"] .cloud{color:rgba(47,58,92,.96)}
+body[data-weather="rainy"] .c1{top:5%}
+body[data-weather="rainy"] .c2{top:15%}
+body[data-weather="rainy"] .c3{top:24%}
+body[data-weather="snowy"] .cloud{color:rgba(190,208,238,.6)}
 
-        .card-glass {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
+/* ========== 💨 风线 + 飘浮杂物 ========== */
+.windlines{position:absolute;inset:0;z-index:4;width:100%;height:100%;
+  opacity:0;transition:opacity 1s var(--smooth);pointer-events:none}
+body[data-weather="windy"] .windlines{opacity:.55}
+body[data-weather="rainy"] .windlines{opacity:.16}
+body[data-weather="snowy"] .windlines{opacity:.12}
+.windlines path{fill:none;stroke:rgba(255,255,255,.85);stroke-linecap:round;stroke-dasharray:20 80}
+.windlines .w1{stroke-width:3;animation:flow 2.4s linear infinite}
+.windlines .w2{stroke-width:2.4;animation:flow 3.2s linear .5s infinite}
+.windlines .w3{stroke-width:2;animation:flow 2.8s linear 1.1s infinite}
+@keyframes flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
 
-        .card-glass.sunny {
-            background: linear-gradient(135deg, rgba(255, 149, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 50%, rgba(20, 20, 30, 0.85) 100%);
-        }
+.debris{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .8s}
+body[data-weather="windy"] .debris{opacity:1}
+.debris i{position:absolute;left:-8%;width:10px;height:5px;border-radius:60% 40% 60% 40%;
+  background:#c8a05a;box-shadow:0 0 6px rgba(0,0,0,.3);
+  animation:fly var(--d,4s) linear var(--dl,0s) infinite}
+.debris i:nth-child(1){top:34%;--d:3.6s}
+.debris i:nth-child(2){top:48%;--d:4.4s;--dl:1.2s;background:#a97f42;width:8px;height:4px}
+.debris i:nth-child(3){top:26%;--d:5s;--dl:2.1s;background:#d8b26a}
+.debris i:nth-child(4){top:58%;--d:4s;--dl:2.8s;width:7px;height:4px}
+@keyframes fly{
+  0%{transform:translate(0,0) rotate(0);opacity:0}
+  5%{opacity:.9}
+  25%{transform:translate(120px,-26px) rotate(160deg)}
+  50%{transform:translate(250px,14px) rotate(340deg)}
+  75%{transform:translate(370px,-20px) rotate(520deg)}
+  95%{opacity:.9}
+  100%{transform:translate(490px,8px) rotate(700deg);opacity:0}
+}
 
-        .card-glass.windy {
-            background: linear-gradient(135deg, rgba(100, 210, 255, 0.1) 0%, rgba(72, 199, 142, 0.06) 50%, rgba(20, 25, 30, 0.85) 100%);
-        }
+/* ========== 🌳 树：整体摇曳 + 树冠抖动 ========== */
+.tree-layer{--depth:6;z-index:5}
+.tree-wrap{position:absolute;left:7%;bottom:9%;width:120px}
+.tree{transform-origin:50% 100%;animation:sway 3.4s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(calc(var(--sway)*-1))}50%{transform:rotate(var(--sway))}}
+.tree .leaves{transform-origin:50% 80%;animation:wiggle 2.1s ease-in-out infinite}
+@keyframes wiggle{0%,100%{transform:rotate(calc(var(--leaf)*-1))}50%{transform:rotate(var(--leaf))}}
+.tree .foliage{fill:#1d5a3c;transition:fill 1.2s}
+body[data-weather="windy"] .foliage{fill:#1a5136}
+body[data-weather="rainy"] .foliage{fill:#123527}
+body[data-weather="snowy"] .foliage{fill:#29455e}
+.tree .trunk{fill:#2e2118}
+.tree .snowcap{fill:#eef4ff;opacity:0;transition:opacity 1s}
+body[data-weather="snowy"] .snowcap{opacity:.92}
 
-        .card-glass.rainy {
-            background: linear-gradient(135deg, rgba(50, 100, 180, 0.12) 0%, rgba(80, 50, 120, 0.06) 50%, rgba(15, 15, 25, 0.88) 100%);
-        }
+/* ========== 地面 / 水洼 / 积雪 ========== */
+.ground{position:absolute;left:0;right:0;bottom:0;height:22%;z-index:5;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,rgba(2,4,10,.55) 78%,rgba(2,4,10,.75) 100%)}
 
-        .card-glass.snowy {
-            background: linear-gradient(135deg, rgba(180, 210, 255, 0.1) 0%, rgba(120, 160, 220, 0.06) 50%, rgba(18, 18, 28, 0.85) 100%);
-        }
+.puddle{position:absolute;left:12%;right:12%;bottom:4.5%;height:7%;z-index:6;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 45%,rgba(158,196,255,.4) 0%,rgba(120,158,230,.16) 55%,transparent 78%);
+  opacity:0;transform:scaleY(.4);transform-origin:50% 100%;pointer-events:none;
+  transition:opacity 1.4s var(--smooth) .4s,transform 1.6s var(--smooth) .4s}
+body[data-weather="rainy"] .puddle{opacity:1;transform:none}
+.puddle i{position:absolute;border:1.5px solid rgba(190,215,255,.55);border-radius:50%;
+  transform:scale(.15);opacity:0;animation:ripple 2.6s ease-out infinite}
+.puddle i:nth-child(1){left:22%;top:30%;width:34px;height:12px}
+.puddle i:nth-child(2){left:55%;top:52%;width:26px;height:9px;animation-delay:.9s}
+.puddle i:nth-child(3){left:70%;top:26%;width:20px;height:7px;animation-delay:1.7s}
+@keyframes ripple{0%{transform:scale(.15);opacity:.85}70%{opacity:.3}100%{transform:scale(1.6);opacity:0}}
 
-        /* Canvas for weather effects */
-        #weatherCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-        }
+.snowground{position:absolute;left:-6%;right:-6%;bottom:-3%;height:15%;z-index:6;pointer-events:none;
+  opacity:0;transform:scaleY(.1);transform-origin:50% 100%;filter:blur(1px);
+  transition:opacity 1.2s var(--smooth) .3s,transform 2s var(--smooth) .3s}
+body[data-weather="snowy"] .snowground{opacity:1;transform:none}
+.snowground::before,.snowground::after{content:"";position:absolute;bottom:0;border-radius:50%;
+  background:linear-gradient(180deg,#f4f8ff,#cddcf5 70%,#b9ccee)}
+.snowground::before{left:2%;right:16%;height:100%;box-shadow:0 -6px 22px rgba(220,235,255,.35)}
+.snowground::after{left:44%;right:-2%;height:72%}
+.snowground b{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;animation:tw 2.8s ease-in-out infinite}
+.snowground b:nth-child(1){left:16%;top:42%}
+.snowground b:nth-child(2){left:48%;top:58%;animation-delay:.8s}
+.snowground b:nth-child(3){left:72%;top:38%;animation-delay:1.6s}
+.snowground b:nth-child(4){left:88%;top:60%;animation-delay:2.2s}
+@keyframes tw{0%,100%{opacity:.15;transform:scale(.7)}50%{opacity:.95;transform:scale(1.25)}}
 
-        /* Card Content */
-        .card-content {
-            position: relative;
-            z-index: 3;
-            padding: 40px 32px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+/* ========== 粒子画布 / 闪电 / 噪点 ========== */
+#fx{position:absolute;inset:0;z-index:7;width:100%;height:100%;pointer-events:none}
+.bolt{position:absolute;top:-2%;height:58%;width:70px;z-index:8;opacity:0;pointer-events:none;
+  transform:rotate(var(--rot,0deg));transition:opacity .35s ease-out;
+  filter:drop-shadow(0 0 14px rgba(190,210,255,.95)) drop-shadow(0 0 42px rgba(140,170,255,.6))}
+.bolt.on{opacity:1;transition:opacity .04s}
+.lflash{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(214,228,255,.95),rgba(150,175,255,.35) 45%,transparent 75%)}
+.grain{position:absolute;inset:0;z-index:10;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>")}
 
-        .weather-icon-container {
-            width: 80px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 52px;
-            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+/* ========== 信息层 ========== */
+.content{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  padding:30px 26px 26px;pointer-events:none}
+.content .seg,.content .stats{pointer-events:auto}
+.top{text-align:center;text-shadow:0 2px 16px rgba(0,0,0,.4)}
+.loc{display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:600;letter-spacing:.4px;color:rgba(255,255,255,.92)}
+.loc svg{width:13px;height:13px;opacity:.85}
+.date{margin-top:3px;font-size:12px;color:rgba(255,255,255,.55);letter-spacing:.6px}
+.temp{margin-top:2px;font-size:92px;font-weight:200;letter-spacing:-4px;line-height:1.05;
+  font-variant-numeric:tabular-nums;text-shadow:0 4px 24px rgba(0,0,0,.35)}
+.temp sup{font-size:36px;font-weight:300;letter-spacing:0;position:relative;top:-44px}
+.cond{font-size:17px;font-weight:600;color:rgba(255,255,255,.92)}
+.hilo{margin-top:2px;font-size:13px;color:rgba(255,255,255,.6)}
+.pop{animation:pop .7s var(--spring)}
+@keyframes pop{0%{opacity:0;transform:translateY(10px) scale(.96)}100%{opacity:1;transform:none}}
 
-        .location-section {
-            margin-top: 12px;
-        }
+.bottom{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border-radius:22px;overflow:hidden;
+  background:rgba(16,20,34,.38);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(26px) saturate(160%);backdrop-filter:blur(26px) saturate(160%);
+  box-shadow:0 12px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)}
+.stat{padding:13px 6px 12px;text-align:center;position:relative}
+.stat+.stat::before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:1px;background:rgba(255,255,255,.1)}
+.stat .k{display:flex;align-items:center;justify-content:center;gap:4px;
+  font-size:10.5px;letter-spacing:.8px;color:rgba(255,255,255,.55)}
+.stat .k svg{width:11px;height:11px}
+.stat .v{margin-top:5px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
 
-        .location-name {
-            font-size: 28px;
-            font-weight: 600;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-        }
+/* ========== iOS 分段控制器 ========== */
+.seg{position:relative;display:flex;padding:3px;border-radius:19px;
+  background:rgba(16,20,34,.42);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(26px) saturate(160%);backdrop-filter:blur(26px) saturate(160%);
+  box-shadow:0 12px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)}
+.seg .ind{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/4);border-radius:15px;
+  background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.12));
+  box-shadow:0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35);
+  transition:transform .5s var(--spring)}
+.seg button{flex:1;position:relative;z-index:1;background:none;border:0;cursor:pointer;
+  padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;
+  color:rgba(255,255,255,.55);font-family:inherit;transition:color .35s;touch-action:manipulation}
+.seg button .in{display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .25s var(--spring)}
+.seg button:active .in{transform:scale(.85)}
+.seg button svg{width:17px;height:17px}
+.seg button span{font-size:11px;font-weight:600;letter-spacing:.5px}
+.seg button[aria-selected="true"]{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.3)}
 
-        .location-sub {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 4px;
-            font-weight: 400;
-        }
+.hint{font-size:12px;color:rgba(255,255,255,.35);letter-spacing:1px}
 
-        .temp-section {
-            margin-top: -10px;
-        }
-
-        .temperature {
-            font-size: 96px;
-            font-weight: 200;
-            color: #ffffff;
-            letter-spacing: -4px;
-            line-height: 1;
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .temperature sup {
-            font-size: 36px;
-            font-weight: 300;
-            vertical-align: super;
-            letter-spacing: 0;
-        }
-
-        .weather-desc {
-            font-size: 18px;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 8px;
-            transition: all 0.4s ease;
-        }
-
-        .weather-detail {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .detail-item {
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 14px 18px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            flex: 1;
-        }
-
-        .detail-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.4);
-            letter-spacing: 0.5px;
-            font-weight: 500;
-        }
-
-        .detail-value {
-            font-size: 20px;
-            font-weight: 500;
-            color: #ffffff;
-            margin-top: 4px;
-        }
-
-        /* Toggle Buttons */
-        .toggle-section {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-top: 20px;
-            padding: 6px;
-            background: rgba(255, 255, 255, 0.04);
-            border-radius: 20px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .toggle-btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 14px;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            font-family: inherit;
-        }
-
-        .toggle-btn:hover {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .toggle-btn.active {
-            background: rgba(255, 255, 255, 0.12);
-            color: #ffffff;
-            box-shadow: 
-                0 2px 8px rgba(0, 0, 0, 0.2),
-                0 0 1px rgba(255, 255, 255, 0.1);
-        }
-
-        .toggle-btn:active {
-            transform: scale(0.95);
-        }
-
-        /* Haptic feedback animation */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .weather-icon-container.animate {
-            animation: pulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Lightning flash */
-        .lightning-flash {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.3);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 10;
-            border-radius: 32px;
-        }
-
-        .lightning-flash.flash {
-            animation: flash 0.15s ease-out;
-        }
-
-        @keyframes flash {
-            0% { opacity: 0; }
-            20% { opacity: 1; }
-            40% { opacity: 0; }
-            60% { opacity: 0.6; }
-            80% { opacity: 0; }
-            100% { opacity: 0; }
-        }
-
-        /* Subtle floating animation */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-4px); }
-        }
-
-        .weather-icon-container {
-            animation: float 4s ease-in-out infinite;
-        }
-
-        /* Glow effect */
-        .glow-orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(60px);
-            opacity: 0.4;
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .glow-orb.sunny {
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(255, 149, 0, 0.5) 0%, transparent 70%);
-            top: 30px;
-            right: 40px;
-        }
-
-        .glow-orb.windy {
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle, rgba(100, 210, 255, 0.4) 0%, transparent 70%);
-            top: 40px;
-            right: 30px;
-        }
-
-        .glow-orb.rainy {
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(80, 100, 200, 0.4) 0%, transparent 70%);
-            top: 30px;
-            right: 50px;
-        }
-
-        .glow-orb.snowy {
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle, rgba(180, 210, 255, 0.35) 0%, transparent 70%);
-            top: 40px;
-            right: 40px;
-        }
-
-        /* Reflection line */
-        .card-content::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 20%;
-            right: 20%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        }
-    </style>
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01s!important;animation-iteration-count:1!important;transition-duration:.2s!important}
+}
+</style>
 </head>
-<body>
-    <div class="ambient-bg sunny" id="ambientBg"></div>
-    
-    <div class="weather-card">
-        <div class="card-glass sunny" id="cardGlass"></div>
-        <div class="glow-orb sunny" id="glowOrb"></div>
-        <div class="lightning-flash" id="lightningFlash"></div>
-        <canvas id="weatherCanvas"></canvas>
-        
-        <div class="card-content">
-            <div>
-                <div class="weather-icon-container" id="weatherIcon">☀️</div>
-                <div class="location-section">
-                    <div class="location-name">Shanghai</div>
-                    <div class="location-sub">浦东新区 · 当前天气</div>
-                </div>
-            </div>
-            
-            <div class="temp-section">
-                <div class="temperature" id="temperature">28<sup>°</sup></div>
-                <div class="weather-desc" id="weatherDesc">晴朗</div>
-                <div class="weather-detail">
-                    <div class="detail-item">
-                        <div class="detail-label">湿度</div>
-                        <div class="detail-value" id="humidity">45%</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">风速</div>
-                        <div class="detail-value" id="windSpeed">12 km/h</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">体感</div>
-                        <div class="detail-value" id="feelsLike">26°</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="toggle-section">
-                <button class="toggle-btn active" data-weather="sunny" onclick="switchWeather('sunny')">☀️ 晴天</button>
-                <button class="toggle-btn" data-weather="windy" onclick="switchWeather('windy')">💨 大风</button>
-                <button class="toggle-btn" data-weather="rainy" onclick="switchWeather('rainy')">⛈️ 暴雨</button>
-                <button class="toggle-btn" data-weather="snowy" onclick="switchWeather('snowy')">❄️ 暴雪</button>
-            </div>
-        </div>
+<body data-weather="sunny">
+<div class="amb a"></div><div class="amb b"></div>
+
+<div class="stage">
+  <div class="card" id="card">
+    <div class="sky"></div>
+
+    <!-- 太阳 -->
+    <div class="layer sun-layer">
+      <div class="sun">
+        <div class="glow"></div><div class="halo"></div>
+        <svg class="rays" viewBox="0 0 200 200" fill="none" stroke-width="5" stroke-linecap="round">
+          <line x1="166" y1="100" x2="192" y2="100"/><line x1="157.2" y1="133" x2="179.7" y2="146"/>
+          <line x1="133" y1="157.2" x2="146" y2="179.7"/><line x1="100" y1="166" x2="100" y2="192"/>
+          <line x1="67" y1="157.2" x2="54" y2="179.7"/><line x1="42.8" y1="133" x2="20.3" y2="146"/>
+          <line x1="34" y1="100" x2="8" y2="100"/><line x1="42.8" y1="67" x2="20.3" y2="54"/>
+          <line x1="67" y1="42.8" x2="54" y2="20.3"/><line x1="100" y1="34" x2="100" y2="8"/>
+          <line x1="133" y1="42.8" x2="146" y2="20.3"/><line x1="157.2" y1="67" x2="179.7" y2="54"/>
+        </svg>
+        <div class="core"></div>
+      </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('weatherCanvas');
-        const ctx = canvas.getContext('2d');
-        let currentWeather = 'sunny';
-        let animationId;
-        let particles = [];
+    <!-- 云 -->
+    <div class="layer cloud-layer">
+      <div class="cloud c1"><svg viewBox="0 0 220 100" fill="currentColor"><ellipse cx="66" cy="72" rx="54" ry="24"/><circle cx="94" cy="50" r="30"/><circle cx="136" cy="44" r="36"/><ellipse cx="164" cy="72" rx="48" ry="22"/></svg></div>
+      <div class="cloud c2"><svg viewBox="0 0 220 100" fill="currentColor"><ellipse cx="66" cy="72" rx="54" ry="24"/><circle cx="94" cy="50" r="30"/><circle cx="136" cy="44" r="36"/><ellipse cx="164" cy="72" rx="48" ry="22"/></svg></div>
+      <div class="cloud c3"><svg viewBox="0 0 220 100" fill="currentColor"><ellipse cx="66" cy="72" rx="54" ry="24"/><circle cx="94" cy="50" r="30"/><circle cx="136" cy="44" r="36"/><ellipse cx="164" cy="72" rx="48" ry="22"/></svg></div>
+    </div>
 
-        function resizeCanvas() {
-            canvas.width = canvas.offsetWidth * 2;
-            canvas.height = canvas.offsetHeight * 2;
-            ctx.scale(2, 2);
-        }
+    <!-- 风线 -->
+    <svg class="windlines" viewBox="0 0 400 700" preserveAspectRatio="none">
+      <path class="w1" pathLength="100" d="M-30 170 C 70 130, 170 215, 285 168 S 430 140, 470 172"/>
+      <path class="w2" pathLength="100" d="M-40 300 C 60 262, 190 342, 300 296 S 440 272, 480 302"/>
+      <path class="w3" pathLength="100" d="M-30 452 C 80 416, 200 492, 315 448 S 450 424, 480 452"/>
+    </svg>
+    <div class="debris"><i></i><i></i><i></i><i></i></div>
 
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+    <!-- 树 -->
+    <div class="layer tree-layer">
+      <div class="tree-wrap">
+        <svg class="tree" viewBox="0 0 140 190">
+          <path class="trunk" d="M66 190 C66 150 62 128 58 108 L70 88 L82 108 C78 128 74 150 74 190 Z"/>
+          <g class="leaves">
+            <g class="foliage">
+              <circle cx="70" cy="66" r="40"/><circle cx="40" cy="88" r="27"/>
+              <circle cx="100" cy="86" r="28"/><circle cx="70" cy="100" r="30"/>
+            </g>
+            <g class="snowcap">
+              <ellipse cx="62" cy="36" rx="26" ry="10"/><ellipse cx="36" cy="70" rx="15" ry="6"/>
+              <ellipse cx="102" cy="66" rx="16" ry="6.5"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
 
-        // Weather data
-        const weatherData = {
-            sunny: { icon: '☀️', temp: '28<sup>°</sup>', desc: '晴朗', humidity: '45%', wind: '12 km/h', feels: '26°' },
-            windy: { icon: '💨', temp: '22<sup>°</sup>', desc: '大风', humidity: '55%', wind: '48 km/h', feels: '18°' },
-            rainy: { icon: '⛈️', temp: '16<sup>°</sup>', desc: '暴雨', humidity: '92%', wind: '28 km/h', feels: '12°' },
-            snowy: { icon: '❄️', temp: '-3<sup>°</sup>', desc: '暴雪', humidity: '85%', wind: '15 km/h', feels: '-8°' }
-        };
+    <div class="ground"></div>
+    <div class="puddle"><i></i><i></i><i></i></div>
+    <div class="snowground"><b></b><b></b><b></b><b></b></div>
+    <canvas id="fx"></canvas>
 
-        // Particle classes
-        class SunRay {
-            constructor() {
-                this.reset();
-            }
-            reset() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = w * 0.65 + Math.random() * 40 - 20;
-                this.y = h * 0.18 + Math.random() * 40 - 20;
-                this.length = 60 + Math.random() * 100;
-                this.angle = Math.random() * Math.PI * 2;
-                this.speed = 0.002 + Math.random() * 0.003;
-                this.opacity = 0.03 + Math.random() * 0.06;
-                this.width = 1 + Math.random() * 2;
-            }
-            update() {
-                this.angle += this.speed;
-                if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
-            }
-            draw() {
-                const endX = this.x + Math.cos(this.angle) * this.length;
-                const endY = this.y + Math.sin(this.angle) * this.length;
-                const gradient = ctx.createLinearGradient(this.x, this.y, endX, endY);
-                gradient.addColorStop(0, `rgba(255, 200, 50, ${this.opacity})`);
-                gradient.addColorStop(1, 'rgba(255, 200, 50, 0)');
-                ctx.beginPath();
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(endX, endY);
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = this.width;
-                ctx.stroke();
-            }
-        }
+    <svg class="bolt" id="bolt" viewBox="0 0 70 200">
+      <polygon points="38,0 14,88 32,88 6,200 58,72 36,72 56,0" fill="#eef3ff"/>
+    </svg>
+    <div class="lflash" id="lflash"></div>
+    <div class="grain"></div>
 
-        class SunHalo {
-            constructor() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = w * 0.65;
-                this.y = h * 0.18;
-                this.radius = 40;
-                this.pulseSpeed = 0.02;
-                this.pulseOffset = Math.random() * Math.PI * 2;
-            }
-            update(time) {
-                this.radius = 45 + Math.sin(time * this.pulseSpeed + this.pulseOffset) * 10;
-            }
-            draw() {
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, 'rgba(255, 220, 100, 0.15)');
-                gradient.addColorStop(0.5, 'rgba(255, 180, 50, 0.06)');
-                gradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-            }
-        }
+    <!-- 信息层 -->
+    <div class="content">
+      <div class="top">
+        <div class="loc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-6.5-7-6.5-11.5a6.5 6.5 0 0 1 13 0C18.5 14 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+          杭州 · 西湖区
+        </div>
+        <div class="date" id="dateStr"></div>
+        <div class="temp"><span id="tempVal">31</span><sup>°</sup></div>
+        <div class="cond" id="condTxt">晴</div>
+        <div class="hilo" id="hiloTxt">最高 33° 最低 24°</div>
+      </div>
 
-        class WindLine {
-            constructor() {
-                this.reset();
-            }
-            reset() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = -50;
-                this.y = Math.random() * h;
-                this.length = 40 + Math.random() * 80;
-                this.speed = 4 + Math.random() * 6;
-                this.opacity = 0.05 + Math.random() * 0.1;
-                this.width = 0.5 + Math.random() * 1.5;
-                this.wave = Math.random() * Math.PI * 2;
-                this.waveSpeed = 0.05 + Math.random() * 0.05;
-                this.waveAmp = 2 + Math.random() * 4;
-            }
-            update() {
-                this.x += this.speed;
-                this.wave += this.waveSpeed;
-                const w = canvas.width / 2;
-                if (this.x > w + 50) this.reset();
-            }
-            draw() {
-                const waveY = this.y + Math.sin(this.wave) * this.waveAmp;
-                ctx.beginPath();
-                ctx.moveTo(this.x, waveY);
-                ctx.lineTo(this.x + this.length, waveY + Math.sin(this.wave + 1) * this.waveAmp);
-                ctx.strokeStyle = `rgba(180, 220, 255, ${this.opacity})`;
-                ctx.lineWidth = this.width;
-                ctx.lineCap = 'round';
-                ctx.stroke();
-            }
-        }
+      <div class="bottom">
+        <div class="stats">
+          <div class="stat">
+            <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13.8V5a2 2 0 1 1 4 0v8.8a4 4 0 1 1-4 0Z"/><circle cx="12" cy="17.5" r="1.4" fill="currentColor" stroke="none"/></svg>体感</div>
+            <div class="v" id="feelsV">33°</div>
+          </div>
+          <div class="stat">
+            <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5S6 10 6 14.5a6 6 0 0 0 12 0C18 10 12 3.5 12 3.5Z"/></svg>湿度</div>
+            <div class="v" id="humV">40%</div>
+          </div>
+          <div class="stat">
+            <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h14.5a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7.5a2 2 0 1 1-2 2"/></svg>风速</div>
+            <div class="v" id="windV">8 km/h</div>
+          </div>
+        </div>
 
-        class Cloud {
-            constructor() {
-                this.reset();
-            }
-            reset() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = -100;
-                this.y = 30 + Math.random() * (h * 0.4);
-                this.speed = 0.8 + Math.random() * 1.5;
-                this.size = 20 + Math.random() * 30;
-                this.opacity = 0.08 + Math.random() * 0.12;
-            }
-            update() {
-                this.x += this.speed;
-                const w = canvas.width / 2;
-                if (this.x > w + 100) this.reset();
-            }
-            draw() {
-                ctx.fillStyle = `rgba(200, 220, 240, ${this.opacity})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.arc(this.x + this.size * 0.8, this.y - this.size * 0.2, this.size * 0.7, 0, Math.PI * 2);
-                ctx.arc(this.x - this.size * 0.6, this.y + this.size * 0.1, this.size * 0.6, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+        <div class="seg" id="seg">
+          <div class="ind" id="ind"></div>
+          <button data-w="sunny" aria-selected="true"><span class="in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5 5l1.6 1.6M17.4 17.4 19 19M19 5l-1.6 1.6M6.6 17.4 5 19"/></svg>
+            <span>晴</span></span></button>
+          <button data-w="windy" aria-selected="false"><span class="in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h14.5a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7.5a2 2 0 1 1-2 2"/></svg>
+            <span>风</span></span></button>
+          <button data-w="rainy" aria-selected="false"><span class="in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 14.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.3 9 4 4 0 0 0 6.5 14.5Z"/><path d="M9.5 17.5 8.5 20M14 17.5 13 20"/></svg>
+            <span>雨</span></span></button>
+          <button data-w="snowy" aria-selected="false"><span class="in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.8v18.4M4 7.4l16 9.2M20 7.4l-16 9.2"/></svg>
+            <span>雪</span></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hint">点按按钮切换天气 · 支持键盘 1 – 4</div>
+</div>
 
-        class Tree {
-            constructor() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = 30 + Math.random() * (w - 60);
-                this.y = h - 20;
-                this.height = 30 + Math.random() * 40;
-                this.swayAngle = 0;
-                this.swaySpeed = 0.03 + Math.random() * 0.02;
-                this.swayMax = 0.15 + Math.random() * 0.1;
-            }
-            update(time) {
-                this.swayAngle = Math.sin(time * this.swaySpeed) * this.swayMax;
-            }
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.swayAngle);
-                
-                // Trunk
-                ctx.fillStyle = 'rgba(100, 70, 40, 0.3)';
-                ctx.fillRect(-2, -this.height, 4, this.height);
-                
-                // Leaves
-                ctx.fillStyle = 'rgba(60, 120, 60, 0.2)';
-                ctx.beginPath();
-                ctx.ellipse(0, -this.height - 5, 12, 18, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
-            }
-        }
+<script>
+const $=s=>document.querySelector(s);
+const body=document.body, card=$('#card');
+const rand=(a,b)=>a+Math.random()*(b-a);
 
-        class Raindrop {
-            constructor() {
-                this.reset();
-            }
-            reset() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = Math.random() * w;
-                this.y = -10 - Math.random() * 50;
-                this.speed = 12 + Math.random() * 8;
-                this.length = 15 + Math.random() * 20;
-                this.opacity = 0.2 + Math.random() * 0.3;
-                this.width = 0.5 + Math.random() * 1;
-                this.wind = -2 + Math.random() * -1;
-            }
-            update() {
-                this.y += this.speed;
-                this.x += this.wind;
-                const h = canvas.height / 2;
-                if (this.y > h - 10) {
-                    this.createSplash();
-                    this.reset();
-                }
-            }
-            createSplash() {
-                // Splash particles stored globally
-                const h = canvas.height / 2;
-                for (let i = 0; i < 3; i++) {
-                    splashes.push(new Splash(this.x, h - 10));
-                }
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.x + this.wind * 0.5, this.y + this.length);
-                ctx.strokeStyle = `rgba(150, 180, 255, ${this.opacity})`;
-                ctx.lineWidth = this.width;
-                ctx.lineCap = 'round';
-                ctx.stroke();
-            }
-        }
+const W_DATA={
+  sunny:{temp:31, cond:'晴',  hi:33, lo:24, feels:'33°',  hum:'40%', wind:'8 km/h',  cloud:1.4},
+  windy:{temp:18, cond:'大风', hi:20, lo:13, feels:'15°',  hum:'55%', wind:'42 km/h', cloud:11},
+  rainy:{temp:16, cond:'暴雨', hi:18, lo:13, feels:'14°',  hum:'92%', wind:'28 km/h', cloud:4.5},
+  snowy:{temp:-6, cond:'暴雪', hi:-2, lo:-11, feels:'-11°', hum:'78%', wind:'15 km/h', cloud:2.2},
+};
+let state='sunny';
 
-        class Splash {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.vx = (Math.random() - 0.5) * 4;
-                this.vy = -2 - Math.random() * 3;
-                this.life = 1;
-                this.decay = 0.05 + Math.random() * 0.03;
-                this.size = 1 + Math.random() * 2;
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += 0.2;
-                this.life -= this.decay;
-            }
-            draw() {
-                if (this.life <= 0) return;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(150, 180, 255, ${this.life * 0.4})`;
-                ctx.fill();
-            }
-        }
+/* ---------- 日期 ---------- */
+(()=>{const d=new Date(),wk='日一二三四五六'[d.getDay()];
+  $('#dateStr').textContent=`${d.getMonth()+1}月${d.getDate()}日 周${wk}`;})();
 
-        class Puddle {
-            constructor() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.x = Math.random() * w;
-                this.y = h - 8 - Math.random() * 4;
-                this.radius = 0;
-                this.maxRadius = 3 + Math.random() * 5;
-                this.speed = 0.1 + Math.random() * 0.1;
-                this.opacity = 0.15;
-            }
-            update() {
-                if (this.radius < this.maxRadius) {
-                    this.radius += this.speed;
-                } else {
-                    this.opacity -= 0.003;
-                }
-            }
-            draw() {
-                if (this.opacity <= 0) return;
-                ctx.beginPath();
-                ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.3, 0, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(100, 150, 220, ${this.opacity})`;
-                ctx.fill();
-                // Ripple
-                ctx.beginPath();
-                ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.3, 0, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(150, 180, 255, ${this.opacity * 0.5})`;
-                ctx.lineWidth = 0.5;
-                ctx.stroke();
-            }
-            isDead() {
-                return this.opacity <= 0;
-            }
-        }
+/* ---------- 分段控制器 ---------- */
+const segBtns=[...document.querySelectorAll('.seg button')], ind=$('#ind');
+function setWeather(name,idx){
+  if(state===name) return;
+  state=name; body.dataset.weather=name;
+  ind.style.transform=`translateX(${idx*100}%)`;
+  segBtns.forEach(b=>b.setAttribute('aria-selected', b.dataset.w===name?'true':'false'));
+  const d=W_DATA[name];
+  animateTemp(d.temp);
+  swapText($('#condTxt'), d.cond);
+  swapText($('#hiloTxt'), `最高 ${d.hi}° 最低 ${d.lo}°`);
+  swapText($('#feelsV'), d.feels);
+  swapText($('#humV'),  d.hum);
+  swapText($('#windV'), d.wind);
+  targetCloud=d.cloud;
+  scheduleLightning();
+}
+segBtns.forEach((b,i)=>b.addEventListener('click',()=>setWeather(b.dataset.w,i)));
+addEventListener('keydown',e=>{const m={'1':0,'2':1,'3':2,'4':3};
+  if(m[e.key]!=null) setWeather(segBtns[m[e.key]].dataset.w,m[e.key]);});
 
-        class Snowflake {
-            constructor() {
-                this.reset();
-            }
-            reset() {
-                const w = canvas.width / 2;
-                this.x = Math.random() * w;
-                this.y = -10 - Math.random() * 30;
-                this.speed = 1 + Math.random() * 2;
-                this.size = 1.5 + Math.random() * 3.5;
-                this.opacity = 0.4 + Math.random() * 0.5;
-                this.wobble = Math.random() * Math.PI * 2;
-                this.wobbleSpeed = 0.02 + Math.random() * 0.03;
-                this.wobbleAmp = 0.5 + Math.random() * 1;
-            }
-            update() {
-                this.y += this.speed;
-                this.wobble += this.wobbleSpeed;
-                this.x += Math.sin(this.wobble) * this.wobbleAmp;
-                const h = canvas.height / 2;
-                if (this.y > h - 20) {
-                    this.y = h - 20 + Math.random() * 10;
-                    this.speed = 0;
-                    this.opacity -= 0.005;
-                }
-            }
-            draw() {
-                if (this.opacity <= 0) return;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(230, 240, 255, ${this.opacity})`;
-                ctx.fill();
-                
-                // Sparkle
-                if (Math.random() < 0.01) {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
-                    ctx.fill();
-                }
-            }
-        }
+function swapText(el,txt){el.classList.remove('pop');void el.offsetWidth;el.textContent=txt;el.classList.add('pop');}
 
-        class SnowAccumulation {
-            constructor() {
-                const w = canvas.width / 2;
-                const h = canvas.height / 2;
-                this.segments = [];
-                for (let i = 0; i < w / 4; i++) {
-                    this.segments.push({
-                        x: i * 4,
-                        height: 0,
-                        maxHeight: 8 + Math.random() * 12,
-                        growSpeed: 0.01 + Math.random() * 0.02
-                    });
-                }
-            }
-            update() {
-                this.segments.forEach(seg => {
-                    if (seg.height < seg.maxHeight) {
-                        seg.height += seg.growSpeed;
-                    }
-                });
-            }
-            draw() {
-                const h = canvas.height / 2;
-                ctx.beginPath();
-                ctx.moveTo(0, h);
-                this.segments.forEach(seg => {
-                    ctx.lineTo(seg.x, h - seg.height);
-                });
-                ctx.lineTo(canvas.width / 2, h);
-                ctx.closePath();
-                ctx.fillStyle = 'rgba(220, 235, 255, 0.12)';
-                ctx.fill();
-            }
-        }
+/* ---------- 温度数字缓动 ---------- */
+let curTemp=W_DATA.sunny.temp, tempRaf=null;
+function animateTemp(to){
+  cancelAnimationFrame(tempRaf);
+  const from=curTemp,t0=performance.now(),dur=800;
+  const step=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    curTemp=from+(to-from)*e;
+    $('#tempVal').textContent=Math.round(curTemp);
+    if(p<1) tempRaf=requestAnimationFrame(step);};
+  tempRaf=requestAnimationFrame(step);
+}
 
-        let splashes = [];
-        let puddles = [];
-        let sunRays = [];
-        let sunHalos = [];
-        let windLines = [];
-        let clouds = [];
-        let trees = [];
-        let raindrops = [];
-        let snowflakes = [];
-        let snowAccumulation;
-        let time = 0;
+/* ---------- Canvas 粒子（雨 / 雪 / 水花） ---------- */
+const cv=$('#fx'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);
+  W=card.clientWidth;H=card.clientHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+resize();addEventListener('resize',resize);
 
-        function initWeather(type) {
-            particles = [];
-            splashes = [];
-            puddles = [];
-            sunRays = [];
-            sunHalos = [];
-            windLines = [];
-            clouds = [];
-            trees = [];
-            raindrops = [];
-            snowflakes = [];
+const drops=[],flakes=[],splashes=[];
+let targetCloud=W_DATA.sunny.cloud, cloudSpeed=targetCloud;
+const clouds=[{el:$('.c1'),x:6,m:1},{el:$('.c2'),x:44,m:.65},{el:$('.c3'),x:72,m:1.3}];
 
-            switch(type) {
-                case 'sunny':
-                    for (let i = 0; i < 20; i++) sunRays.push(new SunRay());
-                    for (let i = 0; i < 3; i++) sunHalos.push(new SunHalo());
-                    break;
-                case 'windy':
-                    for (let i = 0; i < 15; i++) windLines.push(new WindLine());
-                    for (let i = 0; i < 4; i++) clouds.push(new Cloud());
-                    for (let i = 0; i < 5; i++) trees.push(new Tree());
-                    break;
-                case 'rainy':
-                    for (let i = 0; i < 80; i++) raindrops.push(new Raindrop());
-                    for (let i = 0; i < 5; i++) clouds.push(new Cloud());
-                    break;
-                case 'snowy':
-                    for (let i = 0; i < 60; i++) snowflakes.push(new Snowflake());
-                    snowAccumulation = new SnowAccumulation();
-                    break;
-            }
-        }
+/* ---------- 指针视差 ---------- */
+let px=0,py=0,tx=0,ty=0;
+card.addEventListener('pointermove',e=>{const r=card.getBoundingClientRect();
+  tx=((e.clientX-r.left)/r.width-.5)*2; ty=((e.clientY-r.top)/r.height-.5)*2;});
+card.addEventListener('pointerleave',()=>{tx=0;ty=0;});
 
-        let lastLightning = 0;
+/* ---------- 主循环 ---------- */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
 
-        function animate() {
-            const w = canvas.width / 2;
-            const h = canvas.height / 2;
-            ctx.clearRect(0, 0, w, h);
-            time++;
+  cloudSpeed+=(targetCloud-cloudSpeed)*Math.min(1,dt*1.6);
+  for(const c of clouds){c.x+=cloudSpeed*c.m*dt;
+    if(c.x>112)c.x=-46;
+    c.el.style.transform=`translateX(${(c.x*W)/100}px)`;}
 
-            switch(currentWeather) {
-                case 'sunny':
-                    sunHalos.forEach(halo => { halo.update(time); halo.draw(); });
-                    sunRays.forEach(ray => { ray.update(); ray.draw(); });
-                    break;
-                case 'windy':
-                    windLines.forEach(line => { line.update(); line.draw(); });
-                    clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
-                    trees.forEach(tree => { tree.update(time); tree.draw(); });
-                    break;
-                case 'rainy':
-                    raindrops.forEach(drop => { drop.update(); drop.draw(); });
-                    splashes.forEach(s => { s.update(); s.draw(); });
-                    splashes = splashes.filter(s => s.life > 0);
-                    clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
-                    
-                    // Lightning effect
-                    if (time - lastLightning > 180 && Math.random() < 0.008) {
-                        triggerLightning();
-                        lastLightning = time;
-                    }
-                    
-                    // Create puddles
-                    if (Math.random() < 0.03) {
-                        puddles.push(new Puddle());
-                    }
-                    puddles.forEach(p => { p.update(); p.draw(); });
-                    puddles = puddles.filter(p => !p.isDead());
-                    break;
-                case 'snowy':
-                    snowflakes.forEach(flake => { flake.update(); flake.draw(); });
-                    if (snowAccumulation) { snowAccumulation.update(); snowAccumulation.draw(); }
-                    break;
-            }
+  px+=(tx-px)*Math.min(1,dt*5); py+=(ty-py)*Math.min(1,dt*5);
+  card.style.setProperty('--px',px.toFixed(4));
+  card.style.setProperty('--py',py.toFixed(4));
 
-            animationId = requestAnimationFrame(animate);
-        }
+  ctx.clearRect(0,0,W,H);
+  const groundY=H*.86;
 
-        function triggerLightning() {
-            const flash = document.getElementById('lightningFlash');
-            flash.classList.remove('flash');
-            void flash.offsetWidth;
-            flash.classList.add('flash');
-            
-            // Draw lightning bolt on canvas
-            const w = canvas.width / 2;
-            const h = canvas.height / 2;
-            let x = w * 0.3 + Math.random() * w * 0.4;
-            let y = 0;
-            
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            while (y < h * 0.7) {
-                x += (Math.random() - 0.5) * 30;
-                y += 10 + Math.random() * 20;
-                ctx.lineTo(x, y);
-            }
-            ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 6;
-            ctx.stroke();
-        }
+  if(state==='rainy'&&drops.length<170)
+    for(let i=0;i<6;i++)drops.push({x:rand(-W*.15,W*1.05),y:rand(-60,-10),l:rand(13,24),vy:rand(620,860),vx:rand(60,110)});
+  if(state==='snowy'&&flakes.length<150)
+    flakes.push({x:rand(0,W),y:rand(-30,-4),r:rand(1,3.4),vy:rand(36,80),ph:rand(0,6.28),amp:rand(10,30),a:rand(.45,1)});
 
-        function switchWeather(type) {
-            if (type === currentWeather) return;
-            currentWeather = type;
+  ctx.lineCap='round';
+  for(let i=drops.length-1;i>=0;i--){const d=drops[i];
+    d.x+=d.vx*dt; d.y+=d.vy*dt;
+    const gy=groundY+rand(0,H*.07);
+    if(d.y>gy){drops.splice(i,1);
+      splashes.push({x:d.x,y:gy,r:1,a:.5});continue;}
+    ctx.strokeStyle='rgba(174,204,255,.55)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(d.x-d.vx*.02,d.y-d.l);ctx.lineTo(d.x,d.y);ctx.stroke();}
+  for(let i=splashes.length-1;i>=0;i--){const s=splashes[i];
+    s.r+=dt*46; s.a-=dt*1.5;
+    if(s.a<=0){splashes.splice(i,1);continue;}
+    ctx.strokeStyle=`rgba(190,214,255,${s.a})`;ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(s.x,s.y,s.r,s.r*.34,0,0,6.283);ctx.stroke();}
 
-            // Update UI
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`[data-weather="${type}"]`).classList.add('active');
+  for(let i=flakes.length-1;i>=0;i--){const f=flakes[i];
+    f.ph+=dt*1.6; f.y+=f.vy*dt; f.x+=Math.sin(f.ph)*f.amp*dt+8*dt;
+    if(f.y>H*.94+4){flakes.splice(i,1);continue;}
+    ctx.fillStyle=`rgba(255,255,255,${f.a})`;
+    ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,6.283);ctx.fill();}
 
-            const data = weatherData[type];
-            document.getElementById('weatherIcon').textContent = data.icon;
-            document.getElementById('temperature').innerHTML = data.temp;
-            document.getElementById('weatherDesc').textContent = data.desc;
-            document.getElementById('humidity').textContent = data.humidity;
-            document.getElementById('windSpeed').textContent = data.wind;
-            document.getElementById('feelsLike').textContent = data.feels;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 
-            // Animate icon
-            const icon = document.getElementById('weatherIcon');
-            icon.classList.remove('animate');
-            void icon.offsetWidth;
-            icon.classList.add('animate');
-
-            // Update backgrounds
-            const bg = document.getElementById('ambientBg');
-            const glass = document.getElementById('cardGlass');
-            const glow = document.getElementById('glowOrb');
-            
-            bg.className = `ambient-bg ${type}`;
-            glass.className = `card-glass ${type}`;
-            glow.className = `glow-orb ${type}`;
-
-            // Initialize particles
-            initWeather(type);
-        }
-
-        // Start
-        initWeather('sunny');
-        animate();
-    </script>
+/* ---------- ⚡ 闪电（随机双击闪） ---------- */
+const bolt=$('#bolt'), lflash=$('#lflash');
+let lTimer=null;
+function scheduleLightning(){
+  clearTimeout(lTimer);
+  if(state!=='rainy') return;
+  lTimer=setTimeout(()=>{strike();scheduleLightning();},rand(2200,6200));
+}
+function strike(){
+  bolt.style.left=rand(10,68)+'%';
+  bolt.style.setProperty('--rot',rand(-5,5)+'deg');
+  flash(.32); bolt.classList.add('on');
+  setTimeout(()=>bolt.classList.remove('on'),110);
+  setTimeout(()=>{bolt.classList.add('on');flash(.7);},200);
+  setTimeout(()=>bolt.classList.remove('on'),340);
+}
+function flash(a){
+  lflash.style.transition='none'; lflash.style.opacity=a;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    lflash.style.transition='opacity .6s ease-out'; lflash.style.opacity=0;}));
+}
+</script>
 </body>
 </html>
